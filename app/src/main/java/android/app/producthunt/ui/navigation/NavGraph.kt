@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.navigation
 
+import android.app.producthunt.ui.screens.main.MainScreen
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -63,8 +64,7 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
                 defaultValue = ""
             }
         )) { }
-//        composable(Route.DEVICE_LIST) { DeviceListScreen(navController) }
-//        composable(Route.DEVICE_ADDDEVICE) { AddDeviceScreen(navController) }
+        composable(Route.MAIN) { MainScreen() }
     }
 }
 
