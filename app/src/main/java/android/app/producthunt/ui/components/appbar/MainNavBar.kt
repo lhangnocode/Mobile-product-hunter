@@ -1,4 +1,4 @@
-package android.app.producthunt.ui.component.appbar
+package android.app.producthunt.ui.components.appbar
 
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRouteOrNull

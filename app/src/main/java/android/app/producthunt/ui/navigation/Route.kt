@@ -12,4 +12,8 @@ object Route {
     const val WISHLIST = "wishlist"
     const val ALERTS = "alerts"
     const val PROFILE = "profile"
+    const val SMART = "smart"
+    const val ACCOUNT = "account"
+    
+    const val PRODUCT_DETAIL = "product_detail"
 }
