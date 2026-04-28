@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.0"
+agp = "9.0.0"
 converterGson = "3.0.0"
 coreSplashscreen = "1.2.0"
 datastorePreferencesRxjava3 = "1.2.0"
