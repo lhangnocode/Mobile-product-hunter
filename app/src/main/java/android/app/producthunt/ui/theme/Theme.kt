@@ -14,31 +14,35 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
     primary = PH_Primary,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = PH_OnBackground,
+    secondary = PH_Price_Target, // Sử dụng màu cam đậm làm màu phụ
+    tertiary = PH_Progress_Bar,  // Sử dụng màu xanh mòng két làm màu nhấn (tertiary)
+    background = PH_OnBackground, // Dùng màu xám đậm (2D2D2D) cho nền Dark Mode
     surface = PH_OnBackground,
     onPrimary = Color.White,
-    onBackground = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color.White, // Chữ trắng trên nền tối
     onSurface = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PH_Primary,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = PH_Background,
-    surface = PH_Surface,
+    secondary = PH_Price_Target,
+    tertiary = PH_Progress_Bar,
+    background = PH_Background, // Dùng màu kem nhạt (FFF8F1) cho nền Light Mode
+    surface = PH_Surface,       // Trắng tinh cho các bề mặt (Card, Dialog)
     onPrimary = Color.White,
-    onBackground = PH_OnBackground,
-    onSurface = PH_OnBackground
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = PH_OnBackground, // Chữ xám đậm trên nền sáng
+    onSurface = PH_OnSurface
 )
 
 @Composable
 fun AndroidAppProductHuntTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
