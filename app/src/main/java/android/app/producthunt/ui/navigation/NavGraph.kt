@@ -1,11 +1,8 @@
 package android.app.producthunt.ui.navigation
 
-<<<<<<< HEAD
 import android.app.producthunt.ui.screens.main.MainScreen
-=======
 import android.app.producthunt.ui.screens.LoginScreen
 import android.app.producthunt.ui.screens.ProductDetailScreen
->>>>>>> origin/main
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -72,10 +69,7 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
                 defaultValue = ""
             }
         )) { }
-<<<<<<< HEAD
         composable(Route.MAIN) { MainScreen() }
-=======
->>>>>>> origin/main
     }
 }
 
