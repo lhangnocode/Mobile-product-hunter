@@ -1,8 +1,10 @@
 package android.app.producthunt.ui.screens
 
 import android.app.producthunt.R
+import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +35,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,18 +50,31 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    navController: NavController
+    navController: NavController,
+    viewModel: AuthViewModel = hiltViewModel(),
 ) {
     var emailOrUsername by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var acceptedTerms by remember { mutableStateOf(false) }
+
+    val loginState by viewModel.loginState.collectAsState()
+
+    LaunchedEffect(loginState) {
+        if (loginState is UiState.Success) {
+            viewModel.resetLoginState()
+            navController.navigate(Route.MAIN) {
+                popUpTo(Route.LOGIN) { inclusive = true }
+            }
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -152,9 +170,18 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                if (loginState is UiState.Error) {
+                    Text(
+                        text = (loginState as UiState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
                 Button(
-                    onClick = { navController.navigate(Route.HOME) },
-                    enabled = emailOrUsername.isNotEmpty() && password.length >= 6 && acceptedTerms,
+                    onClick = { viewModel.login(emailOrUsername, password) },
+                    enabled = emailOrUsername.isNotEmpty() && password.length >= 6 && acceptedTerms
+                            && loginState !is UiState.Loading,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -163,7 +190,15 @@ fun LoginScreen(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(text = "ĐĂNG NHẬP", fontWeight = FontWeight.Bold)
+                    if (loginState is UiState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(text = "ĐĂNG NHẬP", fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 OutlinedButton(

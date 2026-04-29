@@ -1,8 +1,10 @@
 package android.app.producthunt.ui.screens.alerts
 
+import android.app.producthunt.domain.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
 import android.app.producthunt.ui.theme.ColorBackground
 import android.app.producthunt.ui.theme.ColorBorder
 import android.app.producthunt.ui.theme.ColorDivider
@@ -58,11 +60,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,28 +91,23 @@ fun PriceAlertsScreen(
     onNavigateToHunt: () -> Unit = {},
     onNavigateToDeals: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
+    viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
-    val alerts = remember {
-        listOf(
+    val alertsState by viewModel.alertsState.collectAsState()
+
+    val alerts = when (val s = alertsState) {
+        is UiState.Success -> s.data.mapIndexed { index, dto ->
             PriceAlert(
-                id = 1,
-                name = "Sony WH-1000XM5",
-                subtitle = "Headphones",
-                currentPrice = 348.00,
-                targetPrice = 299.00,
+                id = index,
+                name = dto.product?.productName ?: dto.productId,
+                subtitle = dto.product?.category ?: "",
+                currentPrice = 0.0,
+                targetPrice = dto.targetPrice,
                 placeholderColor = Color(0xFF1E1E2E),
                 placeholderIcon = Icons.Filled.Headphones,
-            ),
-            PriceAlert(
-                id = 2,
-                name = "Apple Watch",
-                subtitle = "Series 9",
-                currentPrice = 389.00,
-                targetPrice = 350.00,
-                placeholderColor = Color(0xFFE2E8F0),
-                placeholderIcon = Icons.Filled.Watch,
-            ),
-        )
+            )
+        }
+        else -> emptyList()
     }
 
     var notificationsEnabled by remember { mutableStateOf(true) }
