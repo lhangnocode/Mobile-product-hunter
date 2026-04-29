@@ -1,5 +1,8 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.ui.components.card.CategoryChip
+import android.app.producthunt.ui.components.card.SmartDealCard
+import android.app.producthunt.ui.theme.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,9 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.app.producthunt.ui.components.card.CategoryChip
-import android.app.producthunt.ui.components.card.SmartDealCard
-import android.app.producthunt.ui.theme.*
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 data class WishlistItem(
     val id: String,
@@ -33,8 +35,75 @@ data class WishlistItem(
 
 @Composable
 fun WishlistScreen(
-    modifier: Modifier = Modifier
+    navController: NavController = rememberNavController()
 ) {
+    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Wishlist) }
+    
+    val tabs = listOf(
+        MainTab.Home,
+        MainTab.Trending,
+        MainTab.Wishlist,
+        MainTab.Alerts,
+        MainTab.Profile
+    )
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar(
+                containerColor = PH_Surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.navigationBarsPadding()
+            ) {
+                tabs.forEach { tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        icon = {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.title,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = tab.title,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = PH_Primary,
+                            selectedTextColor = PH_Primary,
+                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
+                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
+                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
+                        )
+                    )
+                }
+            }
+        },
+        containerColor = PH_Background
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedTab) {
+                MainTab.Home -> PriceAlertsScreen()
+                MainTab.Trending -> TrendingContent()
+                MainTab.Wishlist -> WishlistContent()
+                MainTab.Alerts -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Alerts Screen Content")
+                    }
+                }
+                MainTab.Profile -> {
+                    ProfileContent(navController = navController)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WishlistContent() {
     var selectedCategory by remember { mutableStateOf("All Items") }
     val categories = listOf("All Items", "Dropped", "Target Reached")
 
@@ -61,7 +130,7 @@ fun WishlistScreen(
     )
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(PH_Background)
     ) {
@@ -123,7 +192,7 @@ fun WishlistScreen(
                     )
                 }
                 Icon(
-                    imageVector = PHIcons.Add, // Using Add as a placeholder for chevron right if not in system
+                    imageVector = PHIcons.Add,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = PH_OnBackground.copy(alpha = 0.3f)
@@ -153,7 +222,7 @@ fun WishlistScreen(
         // Wishlist Items
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp)
+            contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 16.dp)
         ) {
             items(wishlistItems) { item ->
                 SmartDealCard(

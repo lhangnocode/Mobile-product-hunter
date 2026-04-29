@@ -1,5 +1,7 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.theme.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -7,15 +9,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.app.producthunt.ui.components.card.ProductGridCard
-import android.app.producthunt.ui.theme.*
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 data class ProductDeal(
     val id: String,
@@ -28,8 +30,76 @@ data class ProductDeal(
 
 @Composable
 fun TrendingScreen(
-    modifier: Modifier = Modifier
+    navController: NavController = rememberNavController()
 ) {
+    // Logic quản lý Tab giống ProfileScreen
+    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Trending) }
+    
+    val tabs = listOf(
+        MainTab.Home,
+        MainTab.Trending,
+        MainTab.Wishlist,
+        MainTab.Alerts,
+        MainTab.Profile
+    )
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar(
+                containerColor = PH_Surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.navigationBarsPadding()
+            ) {
+                tabs.forEach { tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        icon = {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.title,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = tab.title,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = PH_Primary,
+                            selectedTextColor = PH_Primary,
+                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
+                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
+                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
+                        )
+                    )
+                }
+            }
+        },
+        containerColor = PH_Background
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedTab) {
+                MainTab.Home -> PriceAlertsScreen()
+                MainTab.Trending -> TrendingContent()
+                MainTab.Wishlist -> WishlistContent()
+                MainTab.Alerts -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Alerts Screen Content")
+                    }
+                }
+                MainTab.Profile -> {
+                    ProfileContent(navController = navController)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TrendingContent() {
     val trendingDeals = listOf(
         ProductDeal("1", "Tablet Apple Ipad Air M2 11 Inch", "14.190.000 đ", "16.990.000 đ", "-16%"),
         ProductDeal("2", "Smartphone Honor X9d", "9.790.000 đ", "10.990.000 đ", "-11%", true),
@@ -42,7 +112,7 @@ fun TrendingScreen(
     )
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(PH_Background)
     ) {
@@ -93,7 +163,7 @@ fun TrendingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 8.dp),
-            contentPadding = PaddingValues(bottom = 80.dp) // Space for bottom nav
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(trendingDeals) { deal ->
                 ProductGridCard(
