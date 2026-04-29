@@ -206,7 +206,7 @@ fun PriceAlertsScreen() {
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -286,7 +286,7 @@ fun PriceAlertsScreen() {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
