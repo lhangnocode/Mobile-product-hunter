@@ -31,74 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
-// Đã xóa định nghĩa MainTab ở đây vì nó đã có trong MainScreen.kt cùng package
-
 @Composable
 fun ProfileScreen(navController: NavController) {
-    // State quản lý tab, mặc định chọn Profile
-    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Profile) }
-    
-    val tabs = listOf(
-        MainTab.Home,
-        MainTab.Trending,
-        MainTab.Wishlist,
-        MainTab.Alerts,
-        MainTab.Profile
-    )
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = PH_Surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.title,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PH_Primary,
-                            selectedTextColor = PH_Primary,
-                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
-                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
-                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-            }
-        },
-        containerColor = PH_Background
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                MainTab.Home -> PriceAlertsScreen()
-                MainTab.Trending -> TrendingScreen()
-                MainTab.Wishlist -> WishlistScreen()
-                MainTab.Alerts -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Alerts Screen Content")
-                    }
-                }
-                MainTab.Profile -> {
-                    ProfileContent(navController)
-                }
-            }
-        }
-    }
+    ProfileContent(navController)
 }
 
 @Composable
@@ -108,10 +43,10 @@ fun ProfileContent(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ProfileTopBar()
         ProfileHeaderCard()
 
         Spacer(modifier = Modifier.height(24.dp))

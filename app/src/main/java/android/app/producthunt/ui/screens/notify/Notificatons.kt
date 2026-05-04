@@ -1,4 +1,4 @@
-package android.app.producthunt.ui.screens.alerts
+package android.app.producthunt.ui.screens.notify
 
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.ColorOrange

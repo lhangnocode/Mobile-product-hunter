@@ -50,7 +50,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
@@ -70,7 +70,7 @@ fun LoginScreen(
     LaunchedEffect(loginState) {
         if (loginState is UiState.Success) {
             viewModel.resetLoginState()
-            navController.navigate(Route.MAIN) {
+            navController.navigate(Route.HOME) {
                 popUpTo(Route.LOGIN) { inclusive = true }
             }
         }

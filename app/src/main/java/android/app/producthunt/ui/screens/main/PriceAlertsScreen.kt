@@ -1,11 +1,11 @@
-package android.app.producthunt.ui.screens.alerts
+package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
+import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
-import android.app.producthunt.ui.theme.ColorBackground
 import android.app.producthunt.ui.theme.ColorBorder
 import android.app.producthunt.ui.theme.ColorDivider
 import android.app.producthunt.ui.theme.ColorOrange
@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Schedule
@@ -51,10 +50,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,7 +67,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +74,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.launch
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -126,9 +128,8 @@ fun PriceAlertsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ColorBackground),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        TopBar()
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 16.dp),
@@ -158,15 +159,6 @@ fun PriceAlertsScreen(
             }
         }
 
-//        MainNavBar(
-//            navController = rememberNavController(),
-//        )
-
-        BottomNavBar(
-            onNavigateToHunt = onNavigateToHunt,
-            onNavigateToDeals = onNavigateToDeals,
-            onNavigateToSaved = onNavigateToSaved,
-        )
     }
 }
 
@@ -417,7 +409,7 @@ private fun NavBarItem(item: NavItem) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddAlertSheet(
-    sheetState: androidx.compose.material3.SheetState,
+    sheetState: SheetState,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -451,7 +443,7 @@ private fun AddAlertSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(ColorBackground)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -478,7 +470,7 @@ private fun AddAlertSheet(
                                     focusedBorderColor = ColorOrange, unfocusedBorderColor = Color.Transparent,
                                     focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                                 ),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = ColorText),
+                                textStyle = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = ColorText),
                                 modifier = Modifier.width(80.dp),
                             )
                         }
@@ -510,7 +502,7 @@ private fun AddAlertSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) ColorOrange else ColorBackground)
+                            .background(if (selected) ColorOrange else MaterialTheme.colorScheme.background)
                             .border(1.dp, if (selected) ColorOrange else ColorBorder, RoundedCornerShape(10.dp))
                             .clickable { syncFromSlider(preset) }
                             .padding(vertical = 10.dp),

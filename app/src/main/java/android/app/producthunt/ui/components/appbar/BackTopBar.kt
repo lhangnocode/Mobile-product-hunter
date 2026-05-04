@@ -1,7 +1,9 @@
 package android.app.producthunt.ui.components.appbar
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
@@ -31,12 +33,15 @@ fun BackTopBar(
     onBack: () -> Unit = {}
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .clickable(onClick = onBack)
                 .padding(start = 10.dp)
@@ -56,6 +61,7 @@ fun BackTopBar(
             text = "Product Hunter",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
 

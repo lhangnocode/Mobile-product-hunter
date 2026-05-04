@@ -11,11 +11,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -60,7 +60,7 @@ fun MainNavBar(
             navController.navigate(route) {
                 launchSingleTop = true
                 restoreState = true
-                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                popUpTo(Route.HOME) { saveState = true }
             }
         }
     )
@@ -75,7 +75,7 @@ private fun MainNavBarContent(
     val items = remember {
         listOf(
             BottomNavItem(Route.HOME, "Trang chủ", Icons.Default.Home),
-            BottomNavItem(Route.TRENDING, "Xu hướng", Icons.Default.TrendingUp),
+            BottomNavItem(Route.TRENDING, "Xu hướng", Icons.AutoMirrored.Filled.TrendingUp),
             BottomNavItem(Route.WISHLIST, "Yêu thích", Icons.Default.Favorite),
             BottomNavItem(Route.ALERTS, "Thông báo", Icons.Default.Notifications),
             BottomNavItem(Route.PROFILE, "Cá nhân", Icons.Default.Person)

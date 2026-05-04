@@ -41,7 +41,7 @@ fun TrendingScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(PH_Background)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Row(

@@ -1,7 +1,6 @@
-package android.app.producthunt.ui.screens
+package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.R
-import android.app.producthunt.ui.components.appbar.BackTopBar
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -36,43 +35,27 @@ fun ProductDetailScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    Scaffold(
-        topBar = {
-            BackTopBar(
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(vertical = 8.dp),
-                onBack = { navController.popBackStack() }
-            )
-        },
-        floatingActionButton = {
-            ProductFloatingActions()
-        },
-        floatingActionButtonPosition = FabPosition.End
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(scrollState)
-        ) {
-            ProductImageSection()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(scrollState)
+    ) {
+        ProductImageSection()
 
-            Column(modifier = Modifier.padding(16.dp)) {
-                ProductBasicInfo()
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                BestPriceCard()
-                Spacer(modifier = Modifier.height(24.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            ProductBasicInfo()
+            Spacer(modifier = Modifier.height(24.dp))
 
-                PriceHistorySection()
-                Spacer(modifier = Modifier.height(24.dp))
+            BestPriceCard()
+            Spacer(modifier = Modifier.height(24.dp))
 
-                MarketComparisonSection()
-                
-                Spacer(modifier = Modifier.height(100.dp))
-            }
+            PriceHistorySection()
+            Spacer(modifier = Modifier.height(24.dp))
+
+            MarketComparisonSection()
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
