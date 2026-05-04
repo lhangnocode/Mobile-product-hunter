@@ -1,9 +1,19 @@
 package android.app.producthunt.ui.screens.alerts
 
+import android.app.producthunt.domain.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
-import android.app.producthunt.ui.screens.main.*
-import android.app.producthunt.ui.theme.*
+import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
+import android.app.producthunt.ui.theme.ColorBackground
+import android.app.producthunt.ui.theme.ColorBorder
+import android.app.producthunt.ui.theme.ColorDivider
+import android.app.producthunt.ui.theme.ColorOrange
+import android.app.producthunt.ui.theme.ColorSurface
+import android.app.producthunt.ui.theme.ColorText
+import android.app.producthunt.ui.theme.ColorTextSub
+import android.app.producthunt.ui.theme.ColorTrackBg
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,8 +28,29 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,91 +70,26 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun PriceAlertsScreen(
-    navController: NavController = rememberNavController()
+    onNavigateToHunt: () -> Unit = {},
+    onNavigateToDeals: () -> Unit = {},
+    onNavigateToSaved: () -> Unit = {},
+    viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
-    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Alerts) }
-    
-    val tabs = listOf(
-        MainTab.Home,
-        MainTab.Trending,
-        MainTab.Wishlist,
-        MainTab.Alerts,
-        MainTab.Profile
-    )
+    val alertsState by viewModel.alertsState.collectAsState()
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = PH_Surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.title,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PH_Primary,
-                            selectedTextColor = PH_Primary,
-                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
-                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
-                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-            }
-        },
-        containerColor = ColorBackground
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                MainTab.Home -> PriceAlertsContent()
-                MainTab.Trending -> TrendingContent()
-                MainTab.Wishlist -> WishlistContent()
-                MainTab.Alerts -> PriceAlertsContent()
-                MainTab.Profile -> ProfileContent(navController = navController)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PriceAlertsContent() {
-    val alerts = remember {
-        listOf(
+    val alerts = when (val s = alertsState) {
+        is UiState.Success -> s.data.mapIndexed { index, dto ->
             PriceAlert(
-                id = 1,
-                name = "Sony WH-1000XM5",
-                subtitle = "Headphones",
-                currentPrice = 348.0,
-                targetPrice = 299.0,
+                id = index,
+                name = dto.product?.productName ?: dto.productId,
+                subtitle = dto.product?.category ?: "",
+                currentPrice = 0.0,
+                targetPrice = dto.targetPrice,
                 placeholderColor = Color(0xFF1E1E2E),
                 placeholderIcon = Icons.Filled.Headphones,
-            ),
-            PriceAlert(
-                id = 2,
-                name = "Apple Watch",
-                subtitle = "Series 9",
-                currentPrice = 389.0,
-                targetPrice = 350.0,
-                placeholderColor = Color(0xFFE2E8F0),
-                placeholderIcon = Icons.Filled.Watch,
-            ),
-        )
+            )
+        }
+        else -> emptyList()
     }
 
     var notificationsEnabled by remember { mutableStateOf(true) }

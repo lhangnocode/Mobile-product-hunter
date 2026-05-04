@@ -1,8 +1,10 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.components.card.CategoryChip
 import android.app.producthunt.ui.components.card.SmartDealCard
 import android.app.producthunt.ui.theme.*
+import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,8 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 
 data class WishlistItem(
     val id: String,
@@ -35,7 +36,8 @@ data class WishlistItem(
 
 @Composable
 fun WishlistScreen(
-    navController: NavController = rememberNavController()
+    modifier: Modifier = Modifier,
+    viewModel: WishlistViewModel = hiltViewModel(),
 ) {
     var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Wishlist) }
     
@@ -105,29 +107,9 @@ fun WishlistScreen(
 @Composable
 fun WishlistContent() {
     var selectedCategory by remember { mutableStateOf("All Items") }
-    val categories = listOf("All Items", "Dropped", "Target Reached")
+    val categories = listOf("All Items")
 
-    val wishlistItems = listOf(
-        WishlistItem(
-            "1", "Nike Air Zoom", "$120.00", "$150.00", "$115.00",
-            badgeText = "-15%", statusLabel = "PRICE DROPPED",
-            statusColor = PH_Status_Error_Text, statusBgColor = PH_Status_Error_Bg
-        ),
-        WishlistItem(
-            "2", "MacBook Pro", "$2,499.00", null, "$2,299.00",
-            statusLabel = "WAIT"
-        ),
-        WishlistItem(
-            "3", "Yeezy Boost", "$310.00", "$380.00", "$310.00",
-            badgeText = "NEW LOW", statusLabel = "BEST PRICE EVER",
-            statusColor = PH_Status_Success_Text, statusBgColor = PH_Status_Success_Bg,
-            isMatched = true
-        ),
-        WishlistItem(
-            "4", "Ray-Ban Aviator", "$163.00", null, "$140.00",
-            statusLabel = "WAIT"
-        )
-    )
+    val wishlistState by viewModel.wishlistState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -219,24 +201,35 @@ fun WishlistContent() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Wishlist Items
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 16.dp)
-        ) {
-            items(wishlistItems) { item ->
-                SmartDealCard(
-                    title = item.title,
-                    currentPrice = item.currentPrice,
-                    originalPrice = item.originalPrice,
-                    targetPrice = item.targetPrice,
-                    badgeText = item.badgeText,
-                    statusLabel = item.statusLabel,
-                    statusColor = item.statusColor,
-                    statusBgColor = item.statusBgColor,
-                    isMatched = item.isMatched,
-                    onRemoveClick = { /* Handle remove */ }
-                )
+        when (val state = wishlistState) {
+            is UiState.Loading, UiState.Idle -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PH_Primary)
+                }
+            }
+            is UiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = state.message, color = PH_Status_Error_Text)
+                }
+            }
+            is UiState.Success -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp)
+                ) {
+                    items(state.data) { item ->
+                        val product = item.product
+                        SmartDealCard(
+                            title = product?.productName ?: item.productId,
+                            currentPrice = "—",
+                            originalPrice = null,
+                            targetPrice = "—",
+                            badgeText = null,
+                            statusLabel = null,
+                            onRemoveClick = { viewModel.remove(item.productId) }
+                        )
+                    }
+                }
             }
         }
     }
