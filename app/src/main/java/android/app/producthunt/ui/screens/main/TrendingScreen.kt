@@ -39,7 +39,7 @@ fun TrendingScreen(
     val trendingState by viewModel.trendingState.collectAsState()
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(PH_Background)
     ) {

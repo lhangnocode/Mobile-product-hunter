@@ -1,17 +1,20 @@
 package android.app.producthunt.ui.navigation
 
-import android.app.producthunt.ui.screens.main.ProfileScreen
+import android.app.producthunt.ui.screens.LoginScreen
+import android.app.producthunt.ui.screens.SignupScreen
 import android.app.producthunt.ui.screens.ProductDetailScreen
+import android.app.producthunt.ui.screens.main.ProfileScreen
+import android.app.producthunt.ui.screens.main.TrendingScreen
+import android.app.producthunt.ui.screens.main.WishlistScreen
+import android.app.producthunt.ui.screens.alerts.PriceAlertsScreen
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 
 const val ANIM_DURATION = 300
 
@@ -19,8 +22,8 @@ const val ANIM_DURATION = 300
 fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(
         navController = navController,
-        // Chạy thẳng vào màn hình Profile để kiểm tra giao diện bạn yêu cầu
-        startDestination = Route.PROFILE,
+        // Đặt LOGIN làm màn hình khởi đầu
+        startDestination = Route.LOGIN,
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(
@@ -47,21 +50,35 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
             )
         }
     ) {
+        // Auth Flow
+        composable(Route.LOGIN) { 
+            LoginScreen(navController = navController) 
+        }
+        composable(Route.SIGNUP) { 
+            SignupScreen(navController = navController) 
+        }
+
+        // Main Flow (Các màn hình này đều đã có Bottom Navigation bên trong)
+        composable(Route.HOME) { 
+            PriceAlertsScreen(navController = navController) 
+        }
+        composable(Route.ALERTS) { 
+            PriceAlertsScreen(navController = navController) 
+        }
+        composable(Route.TRENDING) { 
+            TrendingScreen(navController = navController) 
+        }
+        composable(Route.WISHLIST) { 
+            WishlistScreen(navController = navController) 
+        }
         composable(Route.PROFILE) {
             ProfileScreen(navController = navController)
         }
 
+        // Detail Flow
         composable(Route.PRODUCT_DETAIL) { 
             ProductDetailScreen(navController = navController) 
         }
-
-        // Tạm thời để trống các route khác để tránh lỗi build
-        composable(Route.LOGIN) { }
-        composable(Route.SIGNUP) { }
-        composable(Route.HOME) { }
-        composable(Route.TRENDING) { }
-        composable(Route.WISHLIST) { }
-        composable(Route.ALERTS) { }
     }
 }
 
