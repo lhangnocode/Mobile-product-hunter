@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 data class WishlistItem(
     val id: String,
@@ -39,80 +39,13 @@ fun WishlistScreen(
     modifier: Modifier = Modifier,
     viewModel: WishlistViewModel = hiltViewModel(),
 ) {
-    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Wishlist) }
-    
-    val tabs = listOf(
-        MainTab.Home,
-        MainTab.Trending,
-        MainTab.Wishlist,
-        MainTab.Alerts,
-        MainTab.Profile
-    )
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = PH_Surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.title,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PH_Primary,
-                            selectedTextColor = PH_Primary,
-                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
-                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
-                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-            }
-        },
-        containerColor = PH_Background
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                MainTab.Home -> PriceAlertsScreen()
-                MainTab.Trending -> TrendingContent()
-                MainTab.Wishlist -> WishlistContent()
-                MainTab.Alerts -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Alerts Screen Content")
-                    }
-                }
-                MainTab.Profile -> {
-                    ProfileContent(navController = navController)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun WishlistContent() {
     var selectedCategory by remember { mutableStateOf("All Items") }
     val categories = listOf("All Items")
 
     val wishlistState by viewModel.wishlistState.collectAsState()
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
