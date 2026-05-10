@@ -42,5 +42,15 @@ class AuthRepository @Inject constructor(
         UiState.Error(e.message ?: "Token refresh failed")
     }
 
+    suspend fun restoreSession(): UiState<Boolean> = try {
+        val refreshToken = tokenDataStore.getRefreshToken() ?: return UiState.Success(false)
+        val response = api.refresh(RefreshTokenRequest(refreshToken))
+        tokenDataStore.saveTokens(response.accessToken, response.refreshToken)
+        UiState.Success(true)
+    } catch (e: Exception) {
+        tokenDataStore.clearTokens()
+        UiState.Success(false)
+    }
+
     suspend fun logout() = tokenDataStore.clearTokens()
 }

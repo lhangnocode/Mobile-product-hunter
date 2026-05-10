@@ -20,10 +20,14 @@ import androidx.navigation.compose.composable
 const val ANIM_DURATION = 300
 
 @Composable
-fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
+fun AppNavGraph(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    startDestination: String = Route.LOGIN,
+) {
     NavHost(
         navController = navController,
-        startDestination = Route.LOGIN,
+        startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(

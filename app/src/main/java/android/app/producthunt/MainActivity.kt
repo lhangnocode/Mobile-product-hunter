@@ -6,11 +6,14 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.ui.screens.main.ProductFloatingActions
+import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
@@ -35,6 +39,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -48,9 +54,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import dagger.hilt.android.AndroidEntryPoint
+import android.app.producthunt.domain.UiState
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val authViewModel: AuthViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -60,6 +69,19 @@ class MainActivity : ComponentActivity() {
             val keyboardController = LocalSoftwareKeyboardController.current
 
             AndroidAppProductHuntTheme {
+                val startupState by authViewModel.startupState.collectAsState()
+
+                LaunchedEffect(Unit) {
+                    authViewModel.restoreSession()
+                }
+
+                if (startupState is UiState.Idle || startupState is UiState.Loading) {
+                    StartupLoadingScreen()
+                    return@AndroidAppProductHuntTheme
+                }
+
+                val isAuthenticated = (startupState as? UiState.Success)?.data == true
+                val startDestination = if (isAuthenticated) Route.HOME else Route.LOGIN
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route?.baseRoute()
                 val chrome = currentRoute.toChromeConfig()
@@ -109,10 +131,21 @@ class MainActivity : ComponentActivity() {
                     AppNavGraph(
                         navController = navController,
                         modifier = Modifier.padding(innerPadding),
+                        startDestination = startDestination,
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StartupLoadingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 
