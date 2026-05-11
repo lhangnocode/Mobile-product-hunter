@@ -1,6 +1,8 @@
 package android.app.producthunt.ui.navigation
 
+import android.app.producthunt.ui.screens.AuthGateScreen
 import android.app.producthunt.ui.screens.LoginScreen
+import android.app.producthunt.ui.screens.SignupScreen
 import android.app.producthunt.ui.screens.main.ProductDetailScreen
 import android.app.producthunt.ui.screens.main.PriceAlertsScreen
 import android.app.producthunt.ui.screens.main.HomeScreen
@@ -23,7 +25,7 @@ const val ANIM_DURATION = 300
 fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(
         navController = navController,
-        startDestination = Route.LOGIN,
+        startDestination = Route.AUTH_GATE,
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(
@@ -50,6 +52,10 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
             )
         }
     ) {
+        composable(Route.AUTH_GATE) {
+            AuthGateScreen(navController = navController)
+        }
+
         composable(Route.LOGIN) {
             LoginScreen(navController = navController)
         }
@@ -63,7 +69,7 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
         }
 
         composable(Route.WISHLIST) {
-            WishlistScreen()
+            WishlistScreen(navController = navController)
         }
 
         composable(Route.ALERTS) {
@@ -83,7 +89,7 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
         }
 
         composable(Route.SIGNUP) {
-            Text("Sign up screen")
+            SignupScreen(navController = navController)
         }
 
         composable(Route.FORGOT_PASSWORD) {

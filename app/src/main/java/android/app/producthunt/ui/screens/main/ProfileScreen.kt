@@ -1,6 +1,8 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.R
+import android.app.producthunt.ui.navigation.Route
+import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.theme.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,16 +30,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun ProfileScreen(navController: NavController) {
-    ProfileContent(navController)
+fun ProfileScreen(
+    navController: NavController,
+    viewModel: AuthViewModel = hiltViewModel(),
+) {
+    ProfileContent(
+        navController = navController,
+        onLogout = {
+            viewModel.logout()
+            navController.navigate(Route.LOGIN) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        },
+    )
 }
 
 @Composable
-fun ProfileContent(navController: NavController) {
+fun ProfileContent(
+    navController: NavController,
+    onLogout: () -> Unit = {},
+) {
     val scrollState = rememberScrollState()
     
     Column(
@@ -105,7 +126,8 @@ fun ProfileContent(navController: NavController) {
                     iconColor = Color(0xFFFFEBEE),
                     contentColor = Color(0xFFE53935),
                     title = "Sign Out",
-                    textColor = Color(0xFFE53935)
+                        textColor = Color(0xFFE53935),
+                        onClick = onLogout,
                 )
             }
         }
@@ -222,8 +244,8 @@ fun SettingsToggleItem(icon: ImageVector, iconColor: Color, contentColor: Color,
 }
 
 @Composable
-fun SettingsNavigationItem(icon: ImageVector, iconColor: Color, contentColor: Color, title: String, description: String? = null, textColor: Color = Color.Unspecified) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+fun SettingsNavigationItem(icon: ImageVector, iconColor: Color, contentColor: Color, title: String, description: String? = null, textColor: Color = Color.Unspecified, onClick: () -> Unit = {}) {
+    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Surface(shape = RoundedCornerShape(12.dp), color = iconColor, modifier = Modifier.size(44.dp)) {
             Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp)) }
         }

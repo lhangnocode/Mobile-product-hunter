@@ -33,6 +33,21 @@ class AuthRepository @Inject constructor(
         UiState.Error(e.message ?: "Failed to fetch profile")
     }
 
+    suspend fun hasValidSession(): Boolean {
+        val hasAnyToken = tokenDataStore.getAccessToken() != null || tokenDataStore.getRefreshToken() != null
+        if (!hasAnyToken) return false
+
+        return try {
+            api.me()
+            true
+        } catch (_: Exception) {
+            when (refresh()) {
+                is UiState.Success -> true
+                else -> false
+            }
+        }
+    }
+
     suspend fun refresh(): UiState<TokenResponse> = try {
         val refreshToken = tokenDataStore.getRefreshToken() ?: return UiState.Error("No refresh token")
         val response = api.refresh(RefreshTokenRequest(refreshToken))

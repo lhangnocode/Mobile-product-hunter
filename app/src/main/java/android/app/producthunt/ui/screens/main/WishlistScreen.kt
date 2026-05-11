@@ -1,6 +1,7 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.domain.UiState
+import android.app.producthunt.data.remote.dto.WishlistResponse
 import android.app.producthunt.ui.components.card.CategoryChip
 import android.app.producthunt.ui.components.card.SmartDealCard
 import android.app.producthunt.ui.theme.*
@@ -16,38 +17,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
-data class WishlistItem(
-    val id: String,
-    val title: String,
-    val currentPrice: String,
-    val originalPrice: String? = null,
-    val targetPrice: String,
-    val badgeText: String? = null,
-    val statusLabel: String? = null,
-    val statusColor: Color = PH_Status_Warning_Text,
-    val statusBgColor: Color = PH_Status_Warning_Bg,
-    val isMatched: Boolean = false
-)
+enum class MainTab(val title: String, val icon: ImageVector) {
+    Home("Home", PHIcons.Home),
+    Trending("Trending", PHIcons.Trending),
+    Wishlist("Wishlist", PHIcons.Wishlist),
+    Alerts("Alerts", PHIcons.Notifications),
+    Profile("Profile", PHIcons.Profile)
+}
 
 @Composable
 fun WishlistScreen(
+    navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: WishlistViewModel = hiltViewModel(),
 ) {
-    var selectedTab by remember { mutableStateOf<MainTab>(MainTab.Wishlist) }
+    var selectedTab by remember { mutableStateOf(MainTab.Wishlist) }
     
-    val tabs = listOf(
-        MainTab.Home,
-        MainTab.Trending,
-        MainTab.Wishlist,
-        MainTab.Alerts,
-        MainTab.Profile
-    )
+    val tabs = MainTab.entries
 
     Scaffold(
         bottomBar = {
@@ -89,23 +83,21 @@ fun WishlistScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 MainTab.Home -> PriceAlertsScreen()
-                MainTab.Trending -> TrendingContent()
-                MainTab.Wishlist -> WishlistContent()
+                MainTab.Trending -> TrendingScreen()
+                MainTab.Wishlist -> WishlistContent(viewModel = viewModel)
                 MainTab.Alerts -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("Alerts Screen Content")
                     }
                 }
-                MainTab.Profile -> {
-                    ProfileContent(navController = navController)
-                }
+                MainTab.Profile -> ProfileScreen(navController = navController)
             }
         }
     }
 }
 
 @Composable
-fun WishlistContent() {
+fun WishlistContent(viewModel: WishlistViewModel) {
     var selectedCategory by remember { mutableStateOf("All Items") }
     val categories = listOf("All Items")
 
@@ -114,7 +106,7 @@ fun WishlistContent() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(PH_Background)
     ) {
         // Header
         Column(
@@ -168,7 +160,7 @@ fun WishlistContent() {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tracking 12 items across 4 categories",
+                        text = "Tracking items in your list",
                         style = MaterialTheme.typography.bodySmall,
                         color = PH_OnBackground.copy(alpha = 0.6f)
                     )
@@ -213,20 +205,23 @@ fun WishlistContent() {
                 }
             }
             is UiState.Success -> {
+                val data: List<WishlistResponse> = state.data
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp)
                 ) {
-                    items(state.data) { item ->
+                    items(data) { item ->
                         val product = item.product
                         SmartDealCard(
                             title = product?.productName ?: item.productId,
-                            currentPrice = "—",
+                            currentPrice = "Tracking",
                             originalPrice = null,
                             targetPrice = "—",
                             badgeText = null,
                             statusLabel = null,
-                            onRemoveClick = { viewModel.remove(item.productId) }
+                            onRemoveClick = { 
+                                viewModel.remove(item.productId)
+                            }
                         )
                     }
                 }
@@ -239,6 +234,6 @@ fun WishlistContent() {
 @Composable
 fun WishlistScreenPreview() {
     AndroidAppProductHuntTheme {
-        WishlistScreen()
+        WishlistScreen(navController = rememberNavController())
     }
 }

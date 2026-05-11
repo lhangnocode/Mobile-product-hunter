@@ -21,6 +21,9 @@ class AuthViewModel @Inject constructor(
     private val _loginState = MutableStateFlow<UiState<TokenResponse>>(UiState.Idle)
     val loginState: StateFlow<UiState<TokenResponse>> = _loginState.asStateFlow()
 
+    private val _sessionState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
+    val sessionState: StateFlow<UiState<Boolean>> = _sessionState.asStateFlow()
+
     private val _registerState = MutableStateFlow<UiState<UserResponse>>(UiState.Idle)
     val registerState: StateFlow<UiState<UserResponse>> = _registerState.asStateFlow()
 
@@ -38,14 +41,30 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun checkSession() {
+        viewModelScope.launch {
+            _sessionState.value = UiState.Loading
+            _sessionState.value = if (repository.hasValidSession()) {
+                UiState.Success(true)
+            } else {
+                UiState.Success(false)
+            }
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             repository.logout()
             _loginState.value = UiState.Idle
+            _sessionState.value = UiState.Success(false)
         }
     }
 
     fun resetLoginState() {
         _loginState.value = UiState.Idle
+    }
+
+    fun resetRegisterState() {
+        _registerState.value = UiState.Idle
     }
 }
