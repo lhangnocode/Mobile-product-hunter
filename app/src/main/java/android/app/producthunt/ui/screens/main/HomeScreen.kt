@@ -6,6 +6,7 @@ import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.data.remote.dto.WishlistResponse
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.navigation.Route
+import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
@@ -127,7 +128,7 @@ fun HomeScreen(
         item { SearchPanel() }
         item {
             CategorySection(
-                onViewMore = { navController.navigate(Route.TRENDING) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
             )
         }
         item {
@@ -135,7 +136,7 @@ fun HomeScreen(
                 title = "Today’s Hot Deals",
                 subtitle = "Pulled from trending price signals",
                 deals = hotDeals.take(5),
-                onViewMore = { navController.navigate(Route.TRENDING) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
             )
         }
         item {
@@ -143,7 +144,7 @@ fun HomeScreen(
                 title = "Recently Viewed",
                 viewMoreText = "View more",
                 items = sampleRecentlyViewed,
-                onViewMore = { navController.navigate(Route.TRENDING) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
             )
         }
         item {
@@ -151,23 +152,23 @@ fun HomeScreen(
                 title = "Wishlist Preview",
                 viewMoreText = "View wishlist",
                 items = wishlist.take(3),
-                onViewMore = { navController.navigate(Route.WISHLIST) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.WISHLIST) },
             )
         }
         item {
             AlertPreviewSection(
                 alerts = alerts.take(3),
-                onViewMore = { navController.navigate(Route.ALERTS) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.ALERTS) },
             )
         }
         item {
             PriceDropGridSection(
                 deals = sampleDiscountedDeals.take(4),
-                onViewMore = { navController.navigate(Route.TRENDING) },
+                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
             )
         }
         item { InsightCard() }
-        item { SmartAlertCard(onClick = { navController.navigate(Route.ALERTS) }) }
+        item { SmartAlertCard(onClick = { navController.navigateToTopLevelDestination(Route.ALERTS) }) }
     }
 }
 

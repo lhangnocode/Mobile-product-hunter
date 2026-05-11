@@ -2,6 +2,7 @@ package android.app.producthunt.ui.components.appbar
 
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRouteOrNull
+import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -57,11 +58,7 @@ fun MainNavBar(
         isVisible = currentDestination.isInRoutes(showOnRoutes),
         isSelected = { matchRoutes -> currentDestination.isInRoutes(matchRoutes) },
         onItemClick = { route ->
-            navController.navigate(route) {
-                launchSingleTop = true
-                restoreState = true
-                popUpTo(Route.HOME) { saveState = true }
-            }
+            navController.navigateToTopLevelDestination(route)
         }
     )
 }
@@ -104,7 +101,7 @@ private fun MainNavBarContent(
                 val selected = isSelected(item.matchRoutes)
                 NavigationBarItem(
                     selected = selected,
-                    onClick = { if (!selected) onItemClick(item.route) },
+                    onClick = { onItemClick(item.route) },
                     icon = { Icon(item.icon, contentDescription = item.label) },
                     label = { Text(item.label) },
                     colors = NavigationBarItemDefaults.colors(
