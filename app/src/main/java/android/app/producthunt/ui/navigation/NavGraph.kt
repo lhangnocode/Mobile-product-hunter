@@ -22,10 +22,14 @@ import androidx.navigation.compose.composable
 const val ANIM_DURATION = 300
 
 @Composable
-fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
+fun AppNavGraph(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    startDestination: String = Route.AUTH_GATE,
+) {
     NavHost(
         navController = navController,
-        startDestination = Route.AUTH_GATE,
+        startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(
@@ -69,7 +73,7 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
         }
 
         composable(Route.WISHLIST) {
-            WishlistScreen(navController = navController)
+            WishlistScreen()
         }
 
         composable(Route.ALERTS) {

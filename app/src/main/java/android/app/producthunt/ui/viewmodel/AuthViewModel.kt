@@ -27,6 +27,16 @@ class AuthViewModel @Inject constructor(
     private val _registerState = MutableStateFlow<UiState<UserResponse>>(UiState.Idle)
     val registerState: StateFlow<UiState<UserResponse>> = _registerState.asStateFlow()
 
+    private val _startupState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
+    val startupState: StateFlow<UiState<Boolean>> = _startupState.asStateFlow()
+
+    fun restoreSession() {
+        viewModelScope.launch {
+            _startupState.value = UiState.Loading
+            _startupState.value = repository.restoreSession()
+        }
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _loginState.value = UiState.Loading

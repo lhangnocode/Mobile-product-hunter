@@ -1,7 +1,6 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.domain.UiState
-import android.app.producthunt.data.remote.dto.WishlistResponse
 import android.app.producthunt.ui.components.card.CategoryChip
 import android.app.producthunt.ui.components.card.SmartDealCard
 import android.app.producthunt.ui.theme.*
@@ -17,96 +16,38 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
-enum class MainTab(val title: String, val icon: ImageVector) {
-    Home("Home", PHIcons.Home),
-    Trending("Trending", PHIcons.Trending),
-    Wishlist("Wishlist", PHIcons.Wishlist),
-    Alerts("Alerts", PHIcons.Notifications),
-    Profile("Profile", PHIcons.Profile)
-}
+data class WishlistItem(
+    val id: String,
+    val title: String,
+    val currentPrice: String,
+    val originalPrice: String? = null,
+    val targetPrice: String,
+    val badgeText: String? = null,
+    val statusLabel: String? = null,
+    val statusColor: Color = PH_Status_Warning_Text,
+    val statusBgColor: Color = PH_Status_Warning_Bg,
+    val isMatched: Boolean = false
+)
 
 @Composable
 fun WishlistScreen(
-    navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: WishlistViewModel = hiltViewModel(),
 ) {
-    var selectedTab by remember { mutableStateOf(MainTab.Wishlist) }
-    
-    val tabs = MainTab.entries
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = PH_Surface,
-                tonalElevation = 8.dp,
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.title,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PH_Primary,
-                            selectedTextColor = PH_Primary,
-                            unselectedIconColor = PH_OnSurface.copy(alpha = 0.4f),
-                            unselectedTextColor = PH_OnSurface.copy(alpha = 0.4f),
-                            indicatorColor = PH_Primary.copy(alpha = 0.1f)
-                        )
-                    )
-                }
-            }
-        },
-        containerColor = PH_Background
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                MainTab.Home -> PriceAlertsScreen()
-                MainTab.Trending -> TrendingScreen()
-                MainTab.Wishlist -> WishlistContent(viewModel = viewModel)
-                MainTab.Alerts -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Alerts Screen Content")
-                    }
-                }
-                MainTab.Profile -> ProfileScreen(navController = navController)
-            }
-        }
-    }
-}
-
-@Composable
-fun WishlistContent(viewModel: WishlistViewModel) {
     var selectedCategory by remember { mutableStateOf("All Items") }
     val categories = listOf("All Items")
 
     val wishlistState by viewModel.wishlistState.collectAsState()
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(PH_Background)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Column(
@@ -160,7 +101,7 @@ fun WishlistContent(viewModel: WishlistViewModel) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tracking items in your list",
+                        text = "Tracking 12 items across 4 categories",
                         style = MaterialTheme.typography.bodySmall,
                         color = PH_OnBackground.copy(alpha = 0.6f)
                     )
@@ -205,23 +146,20 @@ fun WishlistContent(viewModel: WishlistViewModel) {
                 }
             }
             is UiState.Success -> {
-                val data: List<WishlistResponse> = state.data
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp)
                 ) {
-                    items(data) { item ->
+                    items(state.data) { item ->
                         val product = item.product
                         SmartDealCard(
                             title = product?.productName ?: item.productId,
-                            currentPrice = "Tracking",
+                            currentPrice = "—",
                             originalPrice = null,
                             targetPrice = "—",
                             badgeText = null,
                             statusLabel = null,
-                            onRemoveClick = { 
-                                viewModel.remove(item.productId)
-                            }
+                            onRemoveClick = { viewModel.remove(item.productId) }
                         )
                     }
                 }
@@ -234,6 +172,6 @@ fun WishlistContent(viewModel: WishlistViewModel) {
 @Composable
 fun WishlistScreenPreview() {
     AndroidAppProductHuntTheme {
-        WishlistScreen(navController = rememberNavController())
+        WishlistScreen()
     }
 }
