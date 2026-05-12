@@ -1,9 +1,6 @@
 package android.app.producthunt.data.remote.api
 
-import android.app.producthunt.data.remote.dto.RefreshTokenRequest
-import android.app.producthunt.data.remote.dto.RegisterRequest
-import android.app.producthunt.data.remote.dto.TokenResponse
-import android.app.producthunt.data.remote.dto.UserResponse
+import android.app.producthunt.data.remote.dto.*
 import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -27,4 +24,13 @@ interface AuthApiService {
 
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body body: RefreshTokenRequest): TokenResponse
+
+    @POST("api/v1/auth/forgot_password/")
+    suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
+
+    @POST("api/v1/auth/verify_otp/")
+    suspend fun verifyOtp(@Body body: VerifyOtpRequest): MessageResponse
+
+    @POST("api/v1/auth/reset_password/")
+    suspend fun resetPassword(@Body body: ResetPasswordRequest): MessageResponse
 }

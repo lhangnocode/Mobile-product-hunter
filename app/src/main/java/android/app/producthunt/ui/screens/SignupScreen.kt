@@ -3,7 +3,6 @@ package android.app.producthunt.ui.screens
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.viewmodel.AuthViewModel
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +35,7 @@ fun SignupScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
     var acceptedTerms by remember { mutableStateOf(false) }
 
     val registerState by viewModel.registerState.collectAsState()
@@ -127,7 +127,15 @@ fun SignupScreen(
                     onValueChange = { confirmPassword = it },
                     label = { Text("Xác nhận mật khẩu") },
                     singleLine = true,
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Icon(
+                                imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = null
+                            )
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -182,15 +190,18 @@ fun SignupScreen(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = { navController.popBackStack() },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(text = "QUAY LẠI ĐĂNG NHẬP", color = MaterialTheme.colorScheme.primary)
+                    Text(text = "Đã có tài khoản? ", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "Đăng nhập",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.clickable { navController.popBackStack() }
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))

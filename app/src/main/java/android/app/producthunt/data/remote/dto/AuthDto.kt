@@ -29,3 +29,23 @@ data class UserResponse(
     @SerializedName("full_name") val fullName: String?,
     @SerializedName("plan") val plan: String?,
 )
+
+data class ForgotPasswordRequest(
+    @SerializedName("email") val email: String
+)
+
+data class VerifyOtpRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("otp") val otp: String
+)
+
+data class ResetPasswordRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("otp") val otp: String,
+    @SerializedName("new_password") val newPassword: String
+)
+
+data class MessageResponse(
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("detail") val detail: String? = null
+)

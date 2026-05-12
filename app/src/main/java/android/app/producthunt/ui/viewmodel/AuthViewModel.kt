@@ -30,6 +30,15 @@ class AuthViewModel @Inject constructor(
     private val _startupState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
     val startupState: StateFlow<UiState<Boolean>> = _startupState.asStateFlow()
 
+    private val _forgotPasswordState = MutableStateFlow<UiState<String>>(UiState.Idle)
+    val forgotPasswordState: StateFlow<UiState<String>> = _forgotPasswordState.asStateFlow()
+
+    private val _verifyOtpState = MutableStateFlow<UiState<String>>(UiState.Idle)
+    val verifyOtpState: StateFlow<UiState<String>> = _verifyOtpState.asStateFlow()
+
+    private val _resetPasswordState = MutableStateFlow<UiState<String>>(UiState.Idle)
+    val resetPasswordState: StateFlow<UiState<String>> = _resetPasswordState.asStateFlow()
+
     fun restoreSession() {
         viewModelScope.launch {
             _startupState.value = UiState.Loading
@@ -48,6 +57,27 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _registerState.value = UiState.Loading
             _registerState.value = repository.register(email, password, fullName)
+        }
+    }
+
+    fun forgotPassword(email: String) {
+        viewModelScope.launch {
+            _forgotPasswordState.value = UiState.Loading
+            _forgotPasswordState.value = repository.forgotPassword(email)
+        }
+    }
+
+    fun verifyOtp(email: String, otp: String) {
+        viewModelScope.launch {
+            _verifyOtpState.value = UiState.Loading
+            _verifyOtpState.value = repository.verifyOtp(email, otp)
+        }
+    }
+
+    fun resetPassword(email: String, otp: String, newPassword: String) {
+        viewModelScope.launch {
+            _resetPasswordState.value = UiState.Loading
+            _resetPasswordState.value = repository.resetPassword(email, otp, newPassword)
         }
     }
 
@@ -76,5 +106,17 @@ class AuthViewModel @Inject constructor(
 
     fun resetRegisterState() {
         _registerState.value = UiState.Idle
+    }
+
+    fun resetForgotPasswordState() {
+        _forgotPasswordState.value = UiState.Idle
+    }
+
+    fun resetVerifyOtpState() {
+        _verifyOtpState.value = UiState.Idle
+    }
+
+    fun resetResetPasswordState() {
+        _resetPasswordState.value = UiState.Idle
     }
 }

@@ -5,7 +5,6 @@ import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.AuthViewModel
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,12 +24,10 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +47,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
@@ -63,7 +60,6 @@ fun LoginScreen(
     var emailOrUsername by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var acceptedTerms by remember { mutableStateOf(false) }
 
     val loginState by viewModel.loginState.collectAsState()
 
@@ -100,14 +96,14 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Welcome Back,",
+                    text = "Chào mừng trở lại,",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = "Login to Product Hunter",
+                    text = "Đăng nhập vào Product Hunter",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
@@ -147,26 +143,11 @@ fun LoginScreen(
                 Text(
                     modifier = Modifier
                         .align(Alignment.End)
-                        .clickable { /* Điều hướng UI */ },
+                        .clickable { navController.navigate(Route.FORGOT_PASSWORD) },
                     text = "Quên mật khẩu?",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = acceptedTerms,
-                        onCheckedChange = { acceptedTerms = it }
-                    )
-                    Text(
-                        text = "Tôi đồng ý với các Điều khoản & Chính sách",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.clickable { acceptedTerms = !acceptedTerms }
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -175,12 +156,13 @@ fun LoginScreen(
                         text = (loginState as UiState.Error).message,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
 
                 Button(
                     onClick = { viewModel.login(emailOrUsername, password) },
-                    enabled = emailOrUsername.isNotEmpty() && password.length >= 6 && acceptedTerms
+                    enabled = emailOrUsername.isNotEmpty() && password.length >= 6 
                             && loginState !is UiState.Loading,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
@@ -201,15 +183,18 @@ fun LoginScreen(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = { navController.navigate(Route.SIGNUP) },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(text = "ĐĂNG KÝ", color = MaterialTheme.colorScheme.primary)
+                    Text(text = "Chưa có tài khoản? ", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "Đăng ký ngay",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.clickable { navController.navigate(Route.SIGNUP) }
+                    )
                 }
             }
         }

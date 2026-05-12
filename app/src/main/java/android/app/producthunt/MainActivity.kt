@@ -188,7 +188,7 @@ private fun String?.toChromeConfig(): ChromeConfig =
         Route.SIGNUP,
         Route.FORGOT_PASSWORD,
         Route.VERIFY_OTP,
-        Route.RESET_PASSWORD -> ChromeConfig(topBar = TopBarType.Back)
+        Route.RESET_PASSWORD -> ChromeConfig(topBar = TopBarType.None)
         else -> ChromeConfig()
     }
 
