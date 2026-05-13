@@ -18,6 +18,8 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 const val ANIM_DURATION = 300
 
@@ -88,8 +90,12 @@ fun AppNavGraph(
             ProfileScreen(navController = navController)
         }
 
-        composable(Route.PRODUCT_DETAIL) {
-            ProductDetailScreen(navController = navController)
+        composable(
+            route = "${Route.PRODUCT_DETAIL}/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")
+            ProductDetailScreen(navController = navController, productId = productId)
         }
 
         composable(Route.SIGNUP) {
