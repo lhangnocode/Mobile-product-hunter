@@ -41,6 +41,7 @@ fun TrendingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .navigationBarsPadding()
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
@@ -86,7 +87,10 @@ fun TrendingScreen(
 
         when (val state = trendingState) {
             is UiState.Loading, UiState.Idle -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding(),
+                    contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = PH_Primary)
                 }
             }
@@ -104,6 +108,7 @@ fun TrendingScreen(
                     columns = GridCells.Fixed(2),
                     modifier = Modifier
                         .fillMaxSize()
+                        .navigationBarsPadding()
                         .padding(horizontal = 8.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
