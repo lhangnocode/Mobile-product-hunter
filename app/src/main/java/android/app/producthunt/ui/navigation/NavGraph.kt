@@ -1,17 +1,9 @@
 package android.app.producthunt.ui.navigation
 
-import android.app.producthunt.ui.screens.AuthGateScreen
-import android.app.producthunt.ui.screens.LoginScreen
-import android.app.producthunt.ui.screens.SignupScreen
-import android.app.producthunt.ui.screens.main.ProductDetailScreen
-import android.app.producthunt.ui.screens.main.PriceAlertsScreen
-import android.app.producthunt.ui.screens.main.HomeScreen
-import android.app.producthunt.ui.screens.main.ProfileScreen
-import android.app.producthunt.ui.screens.main.TrendingScreen
-import android.app.producthunt.ui.screens.main.WishlistScreen
+import android.app.producthunt.ui.screens.*
+import android.app.producthunt.ui.screens.main.*
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
@@ -97,15 +89,18 @@ fun AppNavGraph(
         }
 
         composable(Route.FORGOT_PASSWORD) {
-            Text("Forgot password screen")
+            ForgotPasswordScreen(navController = navController)
         }
 
-        composable(Route.VERIFY_OTP) {
-            Text("Verify OTP screen")
+        composable("${Route.VERIFY_OTP}/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            VerifyOtpScreen(navController = navController, email = email)
         }
 
-        composable(Route.RESET_PASSWORD) {
-            Text("Reset password screen")
+        composable("${Route.RESET_PASSWORD}/{email}/{otp}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val otp = backStackEntry.arguments?.getString("otp") ?: ""
+            ResetPasswordScreen(navController = navController, email = email, otp = otp)
         }
     }
 }
