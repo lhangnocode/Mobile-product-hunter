@@ -2,6 +2,7 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.R
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import android.app.producthunt.ui.viewmodel.ProductDetailViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,13 +28,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun ProductDetailScreen(
-    navController: NavController
+    navController: NavController,
+    productId: String?,
+    viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(productId) {
+        productId?.let {
+            // Load initial data if needed, e.g. history
+            // viewModel.loadPriceHistory(it)
+        }
+    }
+
     val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
@@ -315,6 +327,6 @@ fun ComparisonItem(shop: String, price: String, shipping: String, isBest: Boolea
 @Composable
 fun ProductDetailPreview() {
     AndroidAppProductHuntTheme(darkTheme = true) {
-        ProductDetailScreen(navController = rememberNavController())
+        ProductDetailScreen(navController = rememberNavController(), productId = "sample_id")
     }
 }

@@ -2,67 +2,34 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.R
 import android.app.producthunt.data.remote.dto.PriceAlertResponse
+import android.app.producthunt.data.remote.dto.ProductResponse
 import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.data.remote.dto.WishlistResponse
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
-import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
+import android.app.producthunt.ui.viewmodel.ProductViewModel
 import android.app.producthunt.ui.viewmodel.TrendingViewModel
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LaptopMac
-import androidx.compose.material.icons.filled.LocalOffer
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Watch
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,9 +48,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 
 private val HomeOrangeDark = Color(0xFF7A2A12)
 
@@ -103,10 +71,12 @@ fun HomeScreen(
     trendingViewModel: TrendingViewModel = hiltViewModel(),
     wishlistViewModel: WishlistViewModel = hiltViewModel(),
     priceAlertViewModel: PriceAlertViewModel = hiltViewModel(),
+    productViewModel: ProductViewModel = hiltViewModel(),
 ) {
     val trendingState by trendingViewModel.trendingState.collectAsState()
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
     val alertsState by priceAlertViewModel.alertsState.collectAsState()
+    val productsState by productViewModel.productsState.collectAsState()
 
     val hotDeals = remember(trendingState) {
         trendingState.toHomeDeals().ifEmpty { sampleHotDeals }
@@ -123,28 +93,25 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(28.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item { SearchPanel() }
-        item {
-            CategorySection(
-                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
-            )
-        }
+        item { PopularKeywordsSection() }
+        item { BannerSection() }
         item {
             HeroDealSection(
-                title = "Today’s Hot Deals",
-                subtitle = "Pulled from trending price signals",
+                title = "Trending Products",
+                subtitle = "Top deals of the day",
                 deals = hotDeals.take(5),
                 onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
             )
         }
         item {
-            CompactPreviewSection(
-                title = "Recently Viewed",
-                viewMoreText = "View more",
-                items = sampleRecentlyViewed,
-                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
+            ProductListSection(
+                productsState = productsState,
+                onProductClick = { product ->
+                    navController.navigate("${Route.PRODUCT_DETAIL}/${product.id}")
+                }
             )
         }
         item {
@@ -161,14 +128,6 @@ fun HomeScreen(
                 onViewMore = { navController.navigateToTopLevelDestination(Route.ALERTS) },
             )
         }
-        item {
-            PriceDropGridSection(
-                deals = sampleDiscountedDeals.take(4),
-                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
-            )
-        }
-        item { InsightCard() }
-        item { SmartAlertCard(onClick = { navController.navigateToTopLevelDestination(Route.ALERTS) }) }
     }
 }
 
@@ -185,19 +144,19 @@ private fun SearchPanel() {
                     ),
                 ),
             )
-            .padding(horizontal = 24.dp, vertical = 26.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
-                .clip(RoundedCornerShape(30.dp))
+                .height(54.dp)
+                .clip(RoundedCornerShape(27.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(18.dp))
+            Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
             Text(
                 text = "Search 10,000+ products...",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -208,35 +167,199 @@ private fun SearchPanel() {
 }
 
 @Composable
-private fun CategorySection(onViewMore: () -> Unit) {
-    SectionHeader(
-        title = "Featured Categories",
-        action = "View more",
-        onAction = onViewMore,
+private fun PopularKeywordsSection() {
+    val keywords = listOf("iPhone 15", "Laptop Gaming", "Nike Air", "Mechanical Keyboard", "Smart Watch", "AirPods")
+    Column {
+        Text(
+            text = "Từ khóa phổ biến",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            keywords.forEach { keyword ->
+                Surface(
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Text(
+                        text = keyword,
+                        modifier = Modifier
+                            .clickable { }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BannerSection() {
+    val banners = listOf(
+        R.drawable.banner1,
+        R.drawable.banner2,
+        R.drawable.banner3,
+        R.drawable.banner4
     )
-    Spacer(Modifier.height(16.dp))
-    Row(
-        modifier = Modifier
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        listOf("Electronics", "Fashion", "Home", "Beauty", "Gaming").forEachIndexed { index, category ->
-            val selected = index == 0
-            Box(
+    val pagerState = rememberPagerState(pageCount = { banners.size })
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(380.dp), // Tăng chiều cao lên 380.dp theo yêu cầu
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            pageSpacing = 12.dp
+        ) { page ->
+            Image(
+                painter = painterResource(id = banners[page]),
+                contentDescription = null,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { }
-                    .padding(horizontal = 24.dp, vertical = 13.dp),
-            ) {
-                Text(
-                    text = category,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(
+            Modifier
+                .height(8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            repeat(banners.size) { iteration ->
+                val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else Color.LightGray
+                Box(
+                    modifier = Modifier
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .size(8.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ProductListSection(
+    productsState: UiState<List<ProductResponse>>,
+    onProductClick: (ProductResponse) -> Unit
+) {
+    SectionHeader(
+        title = "Sản phẩm dành cho bạn",
+        action = "Xem tất cả",
+        onAction = { }
+    )
+    Spacer(Modifier.height(16.dp))
+
+    when (productsState) {
+        is UiState.Loading -> {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is UiState.Success -> {
+            val products = productsState.data.take(10) // Lấy tối đa 10 sản phẩm (5 hàng x 2 cột)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                products.chunked(2).forEach { rowProducts ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        rowProducts.forEach { product ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                ProductGridItem(product, onClick = { onProductClick(product) })
+                            }
+                        }
+                        // Thêm khoảng trống nếu hàng chỉ có 1 sản phẩm
+                        if (rowProducts.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+        is UiState.Error -> {
+            Text(
+                text = "Lỗi tải sản phẩm: ${productsState.message}",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(24.dp)
+            )
+        }
+        else -> Unit
+    }
+}
+
+@Composable
+private fun ProductGridItem(product: ProductResponse, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f) // Giữ ảnh tỉ lệ vuông
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                if (product.mainImageUrl != null) {
+                    AsyncImage(
+                        model = product.mainImageUrl,
+                        contentDescription = product.productName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Default.Image, contentDescription = null, tint = Color.LightGray)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = product.brand ?: "Hàng chính hãng",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = product.productName,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 18.sp,
+                modifier = Modifier.heightIn(min = 36.dp)
+            )
         }
     }
 }
@@ -248,12 +371,12 @@ private fun HeroDealSection(
     deals: List<HomeDeal>,
     onViewMore: () -> Unit,
 ) {
-    SectionHeader(title = title, action = "View more", onAction = onViewMore)
-    Spacer(Modifier.height(6.dp))
+    SectionHeader(title = title, action = "Xem thêm", onAction = onViewMore)
+    Spacer(Modifier.height(4.dp))
     Text(
         text = subtitle,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontSize = 13.sp,
+        fontSize = 12.sp,
         modifier = Modifier.padding(horizontal = 24.dp),
     )
     Spacer(Modifier.height(16.dp))
@@ -270,15 +393,15 @@ private fun HeroDealSection(
 @Composable
 private fun FeaturedDealCard(deal: HomeDeal) {
     Card(
-        modifier = Modifier.width(316.dp),
-        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.width(180.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
+                    .height(140.dp)
                     .background(
                         Brush.verticalGradient(
                             listOf(Color(0xFF363C40), Color(0xFF101010)),
@@ -287,17 +410,17 @@ private fun FeaturedDealCard(deal: HomeDeal) {
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(10.dp)
                         .align(Alignment.TopStart),
                 ) {
                     Text(
-                        text = "FLASH DEAL",
+                        text = "HOT",
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Black,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 }
                 Icon(
@@ -305,43 +428,51 @@ private fun FeaturedDealCard(deal: HomeDeal) {
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f),
                     modifier = Modifier
-                        .size(180.dp)
+                        .size(90.dp)
                         .align(Alignment.Center),
                 )
             }
-            Column(Modifier.padding(24.dp)) {
-                PlatformBadges(deal.platforms)
-                Spacer(Modifier.height(14.dp))
+            Column(Modifier.padding(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    deal.platforms.take(2).forEach { platform ->
+                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+                            Text(
+                                text = platform.uppercase(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = deal.title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 23.sp,
-                    lineHeight = 28.sp,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium
                 )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Best price tracked today. High demand expected.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = deal.originalPrice,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                        textDecoration = TextDecoration.LineThrough,
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = deal.currentPrice,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = deal.originalPrice,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 10.sp,
+                            textDecoration = TextDecoration.LineThrough,
+                        )
+                        Text(
+                            text = deal.currentPrice,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -362,7 +493,7 @@ private fun CompactPreviewSection(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items) { deal ->
-            MiniDealCard(deal = deal, modifier = Modifier.width(190.dp))
+            MiniDealCard(deal = deal, modifier = Modifier.width(160.dp))
         }
     }
 }
@@ -372,7 +503,7 @@ private fun AlertPreviewSection(
     alerts: List<HomeDeal>,
     onViewMore: () -> Unit,
 ) {
-    SectionHeader(title = "Alerts Nearing Target", action = "View alerts", onAction = onViewMore)
+    SectionHeader(title = "Thông báo giảm giá", action = "Xem tất cả", onAction = onViewMore)
     Spacer(Modifier.height(14.dp))
     Column(
         modifier = Modifier.padding(horizontal = 24.dp),
@@ -420,80 +551,22 @@ private fun AlertPreviewSection(
 }
 
 @Composable
-private fun PriceDropGridSection(
-    deals: List<HomeDeal>,
-    onViewMore: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = "Recently Heavily Discounted",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Real-time alerts for the biggest value shifts",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 20.sp,
-            )
-        }
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.clickable(onClick = onViewMore),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("View more", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-        }
-    }
-    Spacer(Modifier.height(18.dp))
-    Column(
-        modifier = Modifier.padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        deals.chunked(2).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                rowItems.forEach { deal ->
-                    MiniDealCard(deal = deal, modifier = Modifier.weight(1f))
-                }
-                if (rowItems.size == 1) {
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun MiniDealCard(deal: HomeDeal, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.heightIn(min = 240.dp),
-        shape = RoundedCornerShape(22.dp),
+        modifier = modifier.heightIn(min = 200.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(12.dp)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .aspectRatio(1.2f)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(deal.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(72.dp))
+                Icon(deal.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(60.dp))
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -576,85 +649,6 @@ private fun PriceProgress(discount: String) {
 }
 
 @Composable
-private fun InsightCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Box(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(30.dp)) {
-                Text(
-                    text = "Price History\nIntelligence",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 28.sp,
-                    lineHeight = 34.sp,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Track every price movement and buy only when the signal is green. Our AI predicts future drops.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    modifier = Modifier.fillMaxWidth(0.86f),
-                )
-                Spacer(Modifier.height(24.dp))
-                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp)) {
-                    Text(
-                        text = "Explore Insights",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 13.dp),
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(150.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f), Color.Transparent),
-                        ),
-                    ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SmartAlertCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(42.dp))
-            Spacer(Modifier.height(14.dp))
-            Text("Set Smart Alerts", color = MaterialTheme.colorScheme.onPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "Get notified the second your wishlist items hit your target price.",
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f),
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionHeader(
     title: String,
     action: String,
@@ -670,8 +664,8 @@ private fun SectionHeader(
         Text(
             text = title,
             color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
         )
         Text(
             text = action.uppercase(),
@@ -680,23 +674,6 @@ private fun SectionHeader(
             fontSize = 13.sp,
             modifier = Modifier.clickable(onClick = onAction),
         )
-    }
-}
-
-@Composable
-private fun PlatformBadges(platforms: List<String>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        platforms.take(3).forEach { platform ->
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp)) {
-                Text(
-                    text = platform.uppercase(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                )
-            }
-        }
     }
 }
 
@@ -779,12 +756,6 @@ private val sampleHotDeals = listOf(
     HomeDeal("Samsung Galaxy Watch 6 Classic", "$229", "$329", "-30%", listOf("Lazada"), Icons.Default.Watch),
 )
 
-private val sampleRecentlyViewed = listOf(
-    HomeDeal("iPhone 15 Pro Max", "$999", "$1,099", "-9%", listOf("Shopee"), Icons.Default.Smartphone),
-    HomeDeal("MacBook Air M3", "$1,049", "$1,199", "-13%", listOf("Tiki"), Icons.Default.LaptopMac),
-    HomeDeal("Garmin Venu 3", "$349", "$449", "-22%", listOf("Lazada"), Icons.Default.Watch),
-)
-
 private val sampleWishlist = listOf(
     HomeDeal("Nike Air Zoom Pegasus 40", "$97.50", "$130", "-25%", listOf("Shopee", "Lazada"), Icons.Default.LocalOffer),
     HomeDeal("Premium Minimalist Quartz Watch", "$72", "$120", "-40%", listOf("Tiki"), Icons.Default.Watch),
@@ -795,13 +766,6 @@ private val sampleAlerts = listOf(
     HomeDeal("Sony WH-1000XM5 Headphones", "$299 target", "$348 now", "-14%", listOf("Alert"), Icons.Default.LocalOffer),
     HomeDeal("Apple Watch Series 9", "$350 target", "$389 now", "-10%", listOf("Alert"), Icons.Default.Watch),
     HomeDeal("MacBook Air M3", "$999 target", "$1,049 now", "-5%", listOf("Alert"), Icons.Default.LaptopMac),
-)
-
-private val sampleDiscountedDeals = listOf(
-    HomeDeal("Dell XPS 13 Plus 9320 (Intel i7, 16GB)", "$1,249", "$1,499", "-15%", listOf("Shopee", "Lazada"), Icons.Default.LaptopMac),
-    HomeDeal("Premium Minimalist Quartz Watch", "$72", "$120", "-40%", listOf("Tiki"), Icons.Default.Watch),
-    HomeDeal("Nike Air Zoom Pegasus 40", "$97.50", "$130", "-25%", listOf("Shopee", "Lazada"), Icons.Default.LocalOffer),
-    HomeDeal("Fujifilm Instax Mini 12", "$68", "$85", "-20%", listOf("Tiki", "Lazada"), Icons.Default.Smartphone),
 )
 
 @Preview(showBackground = true)

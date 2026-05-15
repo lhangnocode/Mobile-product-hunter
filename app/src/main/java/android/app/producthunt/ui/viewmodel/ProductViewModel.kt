@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.viewmodel
 
+import android.app.producthunt.data.remote.dto.ProductResponse
 import android.app.producthunt.data.remote.dto.SearchCompareResponse
 import android.app.producthunt.data.remote.dto.SearchPaginatedResponse
 import android.app.producthunt.data.repository.ProductRepository
@@ -18,11 +19,25 @@ class ProductViewModel @Inject constructor(
     private val repository: ProductRepository,
 ) : ViewModel() {
 
+    private val _productsState = MutableStateFlow<UiState<List<ProductResponse>>>(UiState.Idle)
+    val productsState: StateFlow<UiState<List<ProductResponse>>> = _productsState.asStateFlow()
+
     private val _searchState = MutableStateFlow<UiState<SearchPaginatedResponse>>(UiState.Idle)
     val searchState: StateFlow<UiState<SearchPaginatedResponse>> = _searchState.asStateFlow()
 
     private val _compareState = MutableStateFlow<UiState<SearchCompareResponse>>(UiState.Idle)
     val compareState: StateFlow<UiState<SearchCompareResponse>> = _compareState.asStateFlow()
+
+    init {
+        getProducts()
+    }
+
+    fun getProducts() {
+        viewModelScope.launch {
+            _productsState.value = UiState.Loading
+            _productsState.value = repository.getProducts()
+        }
+    }
 
     fun search(q: String, page: Int = 1) {
         viewModelScope.launch {
