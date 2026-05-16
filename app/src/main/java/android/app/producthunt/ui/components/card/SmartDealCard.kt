@@ -1,20 +1,26 @@
 package android.app.producthunt.ui.components.card
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.app.producthunt.ui.theme.*
+import android.app.producthunt.R
+import coil.compose.AsyncImage
 
 @Composable
 fun SmartDealCard(
@@ -22,21 +28,24 @@ fun SmartDealCard(
     currentPrice: String,
     originalPrice: String? = null,
     targetPrice: String,
+    imageUrl: String? = null,
     badgeText: String? = null,
     statusLabel: String? = null,
     statusColor: Color = PH_Status_Warning_Text,
     statusBgColor: Color = PH_Status_Warning_Bg,
     isMatched: Boolean = false,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
     onRemoveClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = PH_Surface
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -46,33 +55,45 @@ fun SmartDealCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Product Image with Badge
+            // Product Image
             Box(
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(80.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray)
+                    .background(PH_Background)
             ) {
-                // Placeholder for image
-                Text(
-                    text = "Img",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.White
-                )
+                if (!imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.product_logo),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp)
+                            .alpha(0.3f),
+                        contentScale = ContentScale.Fit
+                    )
+                }
                 
                 if (badgeText != null) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(4.dp),
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = PH_Primary,
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
                             text = badgeText,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = PH_Status_Error_Text,
+                            fontSize = 8.sp,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -92,7 +113,7 @@ fun SmartDealCard(
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = PH_OnSurface,
                         maxLines = 2,
                         modifier = Modifier.weight(1f)
@@ -120,15 +141,16 @@ fun SmartDealCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = currentPrice,
-                        style = PriceLarge,
-                        color = PH_Price_Current
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PH_Primary
                     )
                     if (originalPrice != null) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = originalPrice,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = PH_OnSurface.copy(alpha = 0.4f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
                             textDecoration = TextDecoration.LineThrough
                         )
                     }
@@ -143,13 +165,13 @@ fun SmartDealCard(
                 ) {
                     Column {
                         Text(
-                            text = "Target: $targetPrice",
+                            text = "Mục tiêu: $targetPrice",
                             style = MaterialTheme.typography.bodySmall,
-                            color = PH_OnSurface.copy(alpha = 0.6f)
+                            color = Color.Gray
                         )
                         if (isMatched) {
                             Text(
-                                text = "Matched Target!",
+                                text = "Đã đạt giá!",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = PH_Status_Success_Text,
                                 fontWeight = FontWeight.Bold
@@ -157,66 +179,19 @@ fun SmartDealCard(
                         }
                     }
                     
-                    TextButton(
+                    IconButton(
                         onClick = onRemoveClick,
-                        contentPadding = PaddingValues(0.dp)
+                        modifier = Modifier.size(24.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = PHIcons.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = PH_Status_Error_Text.copy(alpha = 0.7f)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Remove",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PH_Status_Error_Text.copy(alpha = 0.7f)
-                            )
-                        }
+                        Icon(
+                            imageVector = PHIcons.Delete,
+                            contentDescription = "Remove",
+                            modifier = Modifier.size(18.dp),
+                            tint = PH_Status_Error_Text.copy(alpha = 0.6f)
+                        )
                     }
                 }
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SmartDealCardPreview() {
-    AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(PH_Background)) {
-            SmartDealCard(
-                title = "Nike Air Zoom",
-                currentPrice = "$120.00",
-                originalPrice = "$150.00",
-                targetPrice = "$115.00",
-                badgeText = "-15%",
-                statusLabel = "PRICE DROPPED",
-                statusColor = PH_Status_Error_Text,
-                statusBgColor = PH_Status_Error_Bg
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SmartDealCardMatchedPreview() {
-    AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(PH_Background)) {
-            SmartDealCard(
-                title = "Yeezy Boost",
-                currentPrice = "$310.00",
-                originalPrice = "$380.00",
-                targetPrice = "$310.00",
-                badgeText = "NEW LOW",
-                statusLabel = "BEST PRICE EVER",
-                statusColor = PH_Status_Success_Text,
-                statusBgColor = PH_Status_Success_Bg,
-                isMatched = true
-            )
         }
     }
 }

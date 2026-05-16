@@ -9,6 +9,7 @@ object Route {
     const val RESET_PASSWORD = "reset_password"
     
     const val HOME = "home"
+    const val SEARCH = "search"
     const val TRENDING = "trending"
     const val WISHLIST = "wishlist"
     const val ALERTS = "alerts"

@@ -5,6 +5,8 @@ import android.app.producthunt.ui.components.card.CategoryChip
 import android.app.producthunt.ui.components.card.SmartDealCard
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
+import android.app.producthunt.ui.navigation.Route
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,23 +21,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-
-data class WishlistItem(
-    val id: String,
-    val title: String,
-    val currentPrice: String,
-    val originalPrice: String? = null,
-    val targetPrice: String,
-    val badgeText: String? = null,
-    val statusLabel: String? = null,
-    val statusColor: Color = PH_Status_Warning_Text,
-    val statusBgColor: Color = PH_Status_Warning_Bg,
-    val isMatched: Boolean = false
-)
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun WishlistScreen(
+    navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: WishlistViewModel = hiltViewModel(),
 ) {
@@ -101,17 +93,11 @@ fun WishlistScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tracking 12 items across 4 categories",
+                        text = "Tracking items for price drops",
                         style = MaterialTheme.typography.bodySmall,
                         color = PH_OnBackground.copy(alpha = 0.6f)
                     )
                 }
-                Icon(
-                    imageVector = PHIcons.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = PH_OnBackground.copy(alpha = 0.3f)
-                )
             }
         }
 
@@ -159,6 +145,10 @@ fun WishlistScreen(
                             targetPrice = "—",
                             badgeText = null,
                             statusLabel = null,
+                            onClick = {
+                                val encodedUrl = product?.mainImageUrl?.let { Uri.encode(it) } ?: ""
+                                navController.navigate("${Route.PRODUCT_DETAIL}/${item.productId}?imageUrl=$encodedUrl")
+                            },
                             onRemoveClick = { viewModel.remove(item.productId) }
                         )
                     }
@@ -172,6 +162,6 @@ fun WishlistScreen(
 @Composable
 fun WishlistScreenPreview() {
     AndroidAppProductHuntTheme {
-        WishlistScreen()
+        WishlistScreen(navController = rememberNavController())
     }
 }

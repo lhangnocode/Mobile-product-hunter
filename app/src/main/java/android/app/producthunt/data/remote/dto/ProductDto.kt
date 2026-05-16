@@ -13,11 +13,14 @@ data class ProductResponse(
 )
 
 data class PlatformListingDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("product_id") val productId: String,
     @SerializedName("platform_id") val platformId: Int,
+    @SerializedName("raw_name") val rawName: String?,
     @SerializedName("url") val url: String,
     @SerializedName("affiliate_url") val affiliateUrl: String?,
-    @SerializedName("current_price") val currentPrice: Double,
-    @SerializedName("original_price") val originalPrice: Double?,
+    @SerializedName("current_price") val currentPrice: String, // Server trả về String
+    @SerializedName("original_price") val originalPrice: String?,
     @SerializedName("in_stock") val inStock: Boolean,
     @SerializedName("last_crawled_at") val lastCrawledAt: String?,
 )

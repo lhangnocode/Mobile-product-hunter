@@ -5,7 +5,6 @@ import android.app.producthunt.ui.components.appbar.MainNavBar
 import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
-import android.app.producthunt.ui.screens.main.ProductFloatingActions
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -123,8 +122,7 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Icon(Icons.Default.NotificationsActive, contentDescription = "Alerts")
                             }
-                            FabType.ProductActions -> ProductFloatingActions()
-                            FabType.None -> Unit
+                            else -> Unit
                         }
                     },
                 ) { innerPadding ->
@@ -158,7 +156,6 @@ private enum class TopBarType {
 private enum class FabType {
     None,
     HomeAlert,
-    ProductActions,
 }
 
 private data class ChromeConfig(
@@ -182,8 +179,8 @@ private fun String?.toChromeConfig(): ChromeConfig =
             showBottomBar = true,
         )
         Route.PRODUCT_DETAIL -> ChromeConfig(
-            topBar = TopBarType.Back,
-            fab = FabType.ProductActions,
+            topBar = TopBarType.None, // Changed to None for Cinematic effect
+            fab = FabType.None,
         )
         Route.SIGNUP,
         Route.FORGOT_PASSWORD,
