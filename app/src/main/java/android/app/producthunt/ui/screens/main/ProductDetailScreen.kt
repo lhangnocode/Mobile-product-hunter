@@ -51,6 +51,7 @@ fun ProductDetailScreen(
     val listingsState by viewModel.listingsState.collectAsState()
     val historyState by viewModel.historyState.collectAsState()
     val analysisState by viewModel.analysisState.collectAsState()
+    val isWishlisted by viewModel.isWishlisted.collectAsState()
 
     LaunchedEffect(productId) {
         productId?.let { viewModel.loadProductDetails(it) }
@@ -164,6 +165,7 @@ fun ProductDetailScreen(
             productId?.let { id ->
                 ProductFloatingActions(
                     productId = id,
+                    isWishlisted = isWishlisted,
                     onWishlistClick = { viewModel.toggleWishlist(id) },
                     onAlertClick = { /* Hiện dialog báo giá */ }
                 )

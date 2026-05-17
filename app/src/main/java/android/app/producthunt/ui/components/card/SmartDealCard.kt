@@ -44,18 +44,13 @@ fun SmartDealCard(
             .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Product Image
             Box(
                 modifier = Modifier
                     .size(80.dp)
@@ -73,116 +68,40 @@ fun SmartDealCard(
                     Image(
                         painter = painterResource(id = R.drawable.product_logo),
                         contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .alpha(0.3f),
+                        modifier = Modifier.fillMaxSize().padding(12.dp).alpha(0.3f),
                         contentScale = ContentScale.Fit
                     )
-                }
-                
-                if (badgeText != null) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp),
-                        color = PH_Primary,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = badgeText,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                            fontSize = 8.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Product Details
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = PH_OnSurface,
-                        maxLines = 2,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    if (statusLabel != null) {
-                        Surface(
-                            color = statusBgColor,
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Text(
-                                text = statusLabel,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = statusColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = PH_OnSurface,
+                    maxLines = 2,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = currentPrice,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PH_Primary
-                    )
-                    if (originalPrice != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = originalPrice,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
-                            textDecoration = TextDecoration.LineThrough
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
+                Text(
+                    text = currentPrice,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PH_Primary
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = "Mục tiêu: $targetPrice",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                        if (isMatched) {
-                            Text(
-                                text = "Đã đạt giá!",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PH_Status_Success_Text,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    
-                    IconButton(
-                        onClick = onRemoveClick,
-                        modifier = Modifier.size(24.dp)
-                    ) {
+                    Text(
+                        text = "Theo dõi giá",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                    IconButton(onClick = onRemoveClick, modifier = Modifier.size(24.dp)) {
                         Icon(
                             imageVector = PHIcons.Delete,
                             contentDescription = "Remove",

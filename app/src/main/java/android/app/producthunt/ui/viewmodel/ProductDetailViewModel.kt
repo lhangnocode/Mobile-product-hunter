@@ -26,19 +26,37 @@ class ProductDetailViewModel @Inject constructor(
     private val _analysisState = MutableStateFlow<UiState<PriceAnalysisResponse>>(UiState.Idle)
     val analysisState: StateFlow<UiState<PriceAnalysisResponse>> = _analysisState.asStateFlow()
 
-    private val _wishlistActionState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
-    val wishlistActionState: StateFlow<UiState<Unit>> = _wishlistActionState.asStateFlow()
+    private val currentProductId = MutableStateFlow<String?>(null)
+
+    // Quan sát danh sách yêu thích từ Repository để đồng bộ mọi nơi
+    val isWishlisted: StateFlow<Boolean> = combine(
+        currentProductId,
+        wishlistRepository.wishlist
+    ) { id, state ->
+        if (id == null) return@combine false
+        if (state is UiState.Success) {
+            state.data.any { it.productId == id }
+        } else {
+            false
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun loadProductDetails(productId: String) {
+        currentProductId.value = productId
         viewModelScope.launch {
             _listingsState.value = UiState.Loading
+            
+            // Tải dữ liệu ban đầu cho Wishlist nếu cần
+            if (wishlistRepository.wishlist.value is UiState.Idle) {
+                wishlistRepository.refresh()
+            }
+            
             val listingsResult = platformProductRepository.getListingsByProductId(productId)
             _listingsState.value = listingsResult
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
                 val firstListing = listingsResult.data.first()
                 
-                // Chuyển đổi giá từ String sang Double để gọi API Analysis
                 val currentPrice = firstListing.currentPrice.toDoubleOrNull() ?: 0.0
                 val originalPrice = firstListing.originalPrice?.toDoubleOrNull() ?: currentPrice
                 
@@ -64,13 +82,12 @@ class ProductDetailViewModel @Inject constructor(
 
     fun toggleWishlist(productId: String) {
         viewModelScope.launch {
-            _wishlistActionState.value = UiState.Loading
-            val result = wishlistRepository.add(productId)
-            _wishlistActionState.value = when (result) {
-                is UiState.Success -> UiState.Success(Unit)
-                is UiState.Error -> UiState.Error(result.message)
-                else -> UiState.Idle
+            if (isWishlisted.value) {
+                wishlistRepository.remove(productId)
+            } else {
+                wishlistRepository.add(productId)
             }
+            // Repository.add/remove đã tự động refresh flow, Detail sẽ cập nhật theo
         }
     }
 }

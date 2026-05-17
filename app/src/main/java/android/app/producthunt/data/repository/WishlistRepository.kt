@@ -7,52 +7,62 @@ import android.app.producthunt.domain.UiState
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class WishlistRepository @Inject constructor(
     private val api: WishlistApiService,
 ) {
-    suspend fun get(): UiState<List<WishlistResponse>> = try {
-        UiState.Success(api.get().toWishlistList())
-    } catch (e: Exception) {
-        UiState.Error(e.message ?: "Failed to load wishlist")
+    private val _wishlist = MutableStateFlow<UiState<List<WishlistResponse>>>(UiState.Idle)
+    val wishlist: StateFlow<UiState<List<WishlistResponse>>> = _wishlist.asStateFlow()
+
+    suspend fun refresh() {
+        if (_wishlist.value !is UiState.Success) {
+            _wishlist.value = UiState.Loading
+        }
+        try {
+            val response = api.get()
+            _wishlist.value = UiState.Success(response.toWishlistList())
+        } catch (e: Exception) {
+            if (_wishlist.value !is UiState.Success) {
+                _wishlist.value = UiState.Error(e.message ?: "Failed to load wishlist")
+            }
+        }
     }
 
     suspend fun add(productId: String): UiState<WishlistResponse> = try {
-        UiState.Success(api.add(WishListCreate(productId)))
+        val result = api.add(WishListCreate(productId))
+        refresh() 
+        UiState.Success(result)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to add to wishlist")
     }
 
     suspend fun remove(productId: String): UiState<Unit> = try {
         api.remove(productId)
+        refresh()
         UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to remove from wishlist")
     }
-}
 
-private val wishlistListType = object : TypeToken<List<WishlistResponse>>() {}.type
+    private val wishlistListType = object : TypeToken<List<WishlistResponse>>() {}.type
 
-private fun JsonElement.toWishlistList(): List<WishlistResponse> {
-    val listJson = when {
-        isJsonArray -> asJsonArray
-        isJsonObject -> {
-            val obj = asJsonObject
-            listOf("data", "items", "results", "wishlist", "wishlists", "wish_lists")
-                .firstNotNullOfOrNull { key -> obj.get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
-                ?: throw IllegalStateException(obj.errorMessage() ?: "Unexpected wishlist response")
+    private fun JsonElement.toWishlistList(): List<WishlistResponse> {
+        val listJson = when {
+            isJsonArray -> asJsonArray
+            isJsonObject -> {
+                val obj = asJsonObject
+                listOf("data", "items", "results", "wishlist", "wishlists", "wish_lists")
+                    .firstNotNullOfOrNull { key -> obj.get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                    ?: throw IllegalStateException("Unexpected wishlist response format")
+            }
+            else -> throw IllegalStateException("Unexpected wishlist response")
         }
-        else -> throw IllegalStateException("Unexpected wishlist response")
+        return Gson().fromJson(listJson, wishlistListType)
     }
-
-    return Gson().fromJson(listJson, wishlistListType)
 }
-
-private fun com.google.gson.JsonObject.errorMessage(): String? =
-    listOf("detail", "message", "error")
-        .firstNotNullOfOrNull { key ->
-            get(key)
-                ?.takeIf { it.isJsonPrimitive }
-                ?.asString
-        }
