@@ -62,12 +62,24 @@ fun AppNavGraph(
             HomeScreen(navController = navController)
         }
 
+        composable(
+            route = "${Route.SEARCH}?q={q}",
+            arguments = listOf(navArgument("q") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val query = backStackEntry.arguments?.getString("q")
+            SearchScreen(navController = navController, initialQuery = query)
+        }
+
         composable(Route.TRENDING) {
-            TrendingScreen()
+            TrendingScreen(navController = navController)
         }
 
         composable(Route.WISHLIST) {
-            WishlistScreen()
+            WishlistScreen(navController = navController)
         }
 
         composable(Route.ALERTS) {
@@ -83,11 +95,19 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Route.PRODUCT_DETAIL}/{productId}",
-            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}",
+            arguments = listOf(
+                navArgument("productId") { type = NavType.StringType },
+                navArgument("imageUrl") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
-            ProductDetailScreen(navController = navController, productId = productId)
+            val imageUrl = backStackEntry.arguments?.getString("imageUrl")
+            ProductDetailScreen(navController = navController, productId = productId, imageUrl = imageUrl)
         }
 
         composable(Route.SIGNUP) {

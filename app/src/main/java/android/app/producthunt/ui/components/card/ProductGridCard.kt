@@ -11,18 +11,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import android.app.producthunt.ui.theme.*
+import coil.compose.AsyncImage
 
 @Composable
 fun ProductGridCard(
     title: String,
     currentPrice: String,
+    imageUrl: String?,
     originalPrice: String? = null,
     discount: String? = null,
     isWishlisted: Boolean = false,
@@ -51,13 +53,21 @@ fun ProductGridCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFF5F5F5))
             ) {
-                // Placeholder for image
-                Text(
-                    text = "Product Image",
-                    modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
+                if (imageUrl != null) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = "No Image",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
 
                 // Discount Badge
                 if (discount != null) {
@@ -65,7 +75,7 @@ fun ProductGridCard(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp),
-                        color = Color(0xFF2D2D2D),
+                        color = PH_Primary,
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
@@ -113,7 +123,7 @@ fun ProductGridCard(
                 Text(
                     text = currentPrice,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PH_Status_Success_Text // Using success color for deal price
+                    color = PH_Status_Success_Text
                 )
 
                 if (originalPrice != null) {
@@ -125,38 +135,6 @@ fun ProductGridCard(
                     )
                 }
             }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProductGridCardPreview() {
-    AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(PH_Background)) {
-            ProductGridCard(
-                title = "Tablet Apple Ipad Air M2 11 Inch",
-                currentPrice = "14.190.000 đ",
-                originalPrice = "16.990.000 đ",
-                discount = "-16%",
-                isWishlisted = false
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProductGridCardWishlistedPreview() {
-    AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(PH_Background)) {
-            ProductGridCard(
-                title = "Smartphone Honor X9d",
-                currentPrice = "9.790.000 đ",
-                originalPrice = "10.990.000 đ",
-                discount = "-11%",
-                isWishlisted = true
-            )
         }
     }
 }
