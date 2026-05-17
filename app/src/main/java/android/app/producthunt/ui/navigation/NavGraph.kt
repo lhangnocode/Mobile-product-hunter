@@ -15,6 +15,13 @@ import androidx.navigation.navArgument
 
 const val ANIM_DURATION = 300
 
+val TopLevelRoutes = listOf(
+    Route.HOME,
+    Route.TRENDING,
+    Route.WISHLIST,
+    Route.ALERTS,
+)
+
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -26,26 +33,42 @@ fun AppNavGraph(
         startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
+            val slideDirection = forwardSlideDirection(
+                fromRoute = initialState.destination.route,
+                toRoute = targetState.destination.route,
+            )
             slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.Left,
+                slideDirection,
                 animationSpec = tween(ANIM_DURATION)
             )
         },
         exitTransition = {
+            val slideDirection = forwardSlideDirection(
+                fromRoute = initialState.destination.route,
+                toRoute = targetState.destination.route,
+            )
             slideOutOfContainer(
-                AnimatedContentTransitionScope.SlideDirection.Left,
+                slideDirection,
                 animationSpec = tween(ANIM_DURATION)
             )
         },
         popEnterTransition = {
+            val slideDirection = popSlideDirection(
+                fromRoute = initialState.destination.route,
+                toRoute = targetState.destination.route,
+            )
             slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.Right,
+                slideDirection,
                 animationSpec = tween(ANIM_DURATION)
             )
         },
         popExitTransition = {
+            val slideDirection = popSlideDirection(
+                fromRoute = initialState.destination.route,
+                toRoute = targetState.destination.route,
+            )
             slideOutOfContainer(
-                AnimatedContentTransitionScope.SlideDirection.Right,
+                slideDirection,
                 animationSpec = tween(ANIM_DURATION)
             )
         }
@@ -137,3 +160,34 @@ fun String.baseRoute(): String =
 
 fun NavDestination.baseRouteOrNull(): String? =
     this.route?.baseRoute()
+
+private fun forwardSlideDirection(
+    fromRoute: String?,
+    toRoute: String?,
+): AnimatedContentTransitionScope.SlideDirection {
+    val fromIndex = topLevelRouteIndex(fromRoute)
+    val toIndex = topLevelRouteIndex(toRoute)
+    return when {
+        fromIndex != null && toIndex != null && toIndex < fromIndex ->
+            AnimatedContentTransitionScope.SlideDirection.Right
+        else -> AnimatedContentTransitionScope.SlideDirection.Left
+    }
+}
+
+private fun popSlideDirection(
+    fromRoute: String?,
+    toRoute: String?,
+): AnimatedContentTransitionScope.SlideDirection {
+    val fromIndex = topLevelRouteIndex(fromRoute)
+    val toIndex = topLevelRouteIndex(toRoute)
+    return when {
+        fromIndex != null && toIndex != null && toIndex > fromIndex ->
+            AnimatedContentTransitionScope.SlideDirection.Left
+        else -> AnimatedContentTransitionScope.SlideDirection.Right
+    }
+}
+
+private fun topLevelRouteIndex(route: String?): Int? {
+    val baseRoute = route?.baseRoute() ?: return null
+    return TopLevelRoutes.indexOf(baseRoute).takeIf { it >= 0 }
+}

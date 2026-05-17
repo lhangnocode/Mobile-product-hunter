@@ -44,7 +44,7 @@ fun SmartDealCard(
             .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -55,7 +55,7 @@ fun SmartDealCard(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PH_Background)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (!imageUrl.isNullOrBlank()) {
                     AsyncImage(
@@ -80,7 +80,7 @@ fun SmartDealCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = PH_OnSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     fontWeight = FontWeight.Bold
                 )
@@ -89,7 +89,7 @@ fun SmartDealCard(
                     text = currentPrice,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PH_Primary
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -99,7 +99,7 @@ fun SmartDealCard(
                     Text(
                         text = "Theo dõi giá",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     IconButton(onClick = onRemoveClick, modifier = Modifier.size(24.dp)) {
                         Icon(

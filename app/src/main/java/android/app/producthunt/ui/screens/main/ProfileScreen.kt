@@ -1,8 +1,10 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.R
+import android.app.producthunt.data.local.ThemeMode
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.viewmodel.AuthViewModel
+import android.app.producthunt.ui.viewmodel.ThemeViewModel
 import android.app.producthunt.ui.theme.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,9 +41,14 @@ import androidx.navigation.compose.rememberNavController
 fun ProfileScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel(),
+    themeViewModel: ThemeViewModel = hiltViewModel(),
 ) {
+    val themeMode by themeViewModel.themeMode.collectAsState()
+
     ProfileContent(
         navController = navController,
+        isDarkMode = themeMode == ThemeMode.DARK,
+        onDarkModeChange = themeViewModel::setDarkMode,
         onLogout = {
             viewModel.logout()
             navController.navigate(Route.LOGIN) {
@@ -57,89 +64,100 @@ fun ProfileScreen(
 @Composable
 fun ProfileContent(
     navController: NavController,
+    isDarkMode: Boolean = false,
+    onDarkModeChange: (Boolean) -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        ProfileHeaderCard()
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            SettingsGroup(title = "NOTIFICATIONS") {
-                SettingsToggleItem(
-                    icon = Icons.Default.NotificationsActive,
-                    iconColor = Color(0xFFFFCCBC),
-                    contentColor = Color(0xFFFF5722),
-                    title = "Price alerts",
-                    description = "Notify when saved items drop in price",
-                    initialValue = true
-                )
-                SettingsToggleItem(
-                    icon = Icons.Default.LocalOffer,
-                    iconColor = Color(0xFFE8EAF6),
-                    contentColor = Color(0xFF3F51B5),
-                    title = "Exclusive deals",
-                    description = "Daily curated offers for Elite members",
-                    initialValue = false
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(top = PHSpacing.ScreenVertical),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal)) {
+                SectionTitle("ACCOUNT")
+                ProfileHeaderCard()
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(PHSpacing.SectionGap))
 
-            SettingsGroup(title = "PREFERENCES") {
-                SettingsToggleItem(
-                    icon = Icons.Default.DarkMode,
-                    iconColor = Color(0xFFECEFF1),
-                    contentColor = Color(0xFF455A64),
-                    title = "Dark mode",
-                    description = "Enable high contrast dark appearance",
-                    initialValue = false
-                )
-                SettingsNavigationItem(
-                    icon = Icons.Default.Language,
-                    iconColor = Color(0xFFECEFF1),
-                    contentColor = Color(0xFF455A64),
-                    title = "Region & Language",
-                    description = "United States (English)"
-                )
+            Column(modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal)) {
+                SettingsGroup(title = "NOTIFICATIONS") {
+                    SettingsToggleItem(
+                        icon = Icons.Default.NotificationsActive,
+                        iconColor = Color(0xFFFFCCBC),
+                        contentColor = Color(0xFFFF5722),
+                        title = "Price alerts",
+                        description = "Notify when saved items drop in price",
+                        initialValue = true
+                    )
+                    SettingsToggleItem(
+                        icon = Icons.Default.LocalOffer,
+                        iconColor = Color(0xFFE8EAF6),
+                        contentColor = Color(0xFF3F51B5),
+                        title = "Exclusive deals",
+                        description = "Daily curated offers for Elite members",
+                        initialValue = false
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(PHSpacing.SectionGap))
+
+                SettingsGroup(title = "PREFERENCES") {
+                    SettingsToggleItem(
+                        icon = Icons.Default.DarkMode,
+                        iconColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        title = "Dark mode",
+                        description = "Enable high contrast dark appearance",
+                        checked = isDarkMode,
+                        onCheckedChange = onDarkModeChange,
+                    )
+                    SettingsNavigationItem(
+                        icon = Icons.Default.Language,
+                        iconColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        title = "Region & Language",
+                        description = "United States (English)"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(PHSpacing.SectionGap))
+
+                SettingsGroup(title = "SUPPORT") {
+                    SettingsNavigationItem(
+                        icon = Icons.Default.Info,
+                        iconColor = Color(0xFFF3E5F5),
+                        contentColor = Color(0xFF9C27B0),
+                        title = "About ProductHunter"
+                    )
+                    SettingsNavigationItem(
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        iconColor = Color(0xFFFFEBEE),
+                        contentColor = Color(0xFFE53935),
+                        title = "Sign Out",
+                            textColor = Color(0xFFE53935),
+                            onClick = onLogout,
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            SettingsGroup(title = "SUPPORT") {
-                SettingsNavigationItem(
-                    icon = Icons.Default.Info,
-                    iconColor = Color(0xFFF3E5F5),
-                    contentColor = Color(0xFF9C27B0),
-                    title = "About ProductHunter"
-                )
-                SettingsNavigationItem(
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    iconColor = Color(0xFFFFEBEE),
-                    contentColor = Color(0xFFE53935),
-                    title = "Sign Out",
-                        textColor = Color(0xFFE53935),
-                        onClick = onLogout,
-                )
-            }
+            Spacer(modifier = Modifier.height(PHSpacing.SectionGap))
+            Text(
+                text = "Version 2.4.1 (Build 8902)\n© 2024 ProductHunter Inc.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = PHSpacing.BottomNavPadding)
+            )
         }
-
-        Spacer(modifier = Modifier.height(40.dp))
-        Text(
-            text = "Version 2.4.1 (Build 8902)\n© 2024 ProductHunter Inc.",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
     }
 }
 
@@ -174,31 +192,41 @@ fun ProfileTopBar() {
 @Composable
 fun ProfileHeaderCard() {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(PHSpacing.CardPadding),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(contentAlignment = Alignment.BottomEnd) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(110.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).background(Color(0xFFEEEEEE))
-                )
-                Surface(shape = CircleShape, color = PH_Primary, modifier = Modifier.size(26.dp).border(2.dp, Color.White, CircleShape)) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.padding(4.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(72.dp).clip(CircleShape).border(3.dp, MaterialTheme.colorScheme.surface, CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.padding(4.dp))
+                    }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "Alex Thompson", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = "alex.hunter@example.com", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Alex Thompson", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-            Text(text = "alex.hunter@example.com", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 ProfileBadge(icon = Icons.Default.Key, text = "Elite Hunter", color = PH_Primary, bgColor = Color(0xFFFFF1EB))
                 ProfileBadge(icon = Icons.Default.Sync, text = "Synced", color = Color(0xFF455A64), bgColor = Color(0xFFECEFF1))
             }
@@ -220,26 +248,54 @@ fun ProfileBadge(icon: ImageVector, text: String, color: Color, bgColor: Color) 
 @Composable
 fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
-        Text(text = title, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray.copy(alpha = 0.8f), modifier = Modifier.padding(start = 8.dp, bottom = 12.dp))
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)) {
+        SectionTitle(title)
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)) {
             Column { content() }
         }
     }
 }
 
 @Composable
-fun SettingsToggleItem(icon: ImageVector, iconColor: Color, contentColor: Color, title: String, description: String, initialValue: Boolean) {
-    var checked by remember { mutableStateOf(initialValue) }
+private fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 8.dp, bottom = 12.dp),
+    )
+}
+
+@Composable
+fun SettingsToggleItem(
+    icon: ImageVector,
+    iconColor: Color,
+    contentColor: Color,
+    title: String,
+    description: String,
+    initialValue: Boolean = false,
+    checked: Boolean? = null,
+    onCheckedChange: ((Boolean) -> Unit)? = null,
+) {
+    var localChecked by remember { mutableStateOf(initialValue) }
+    val isChecked = checked ?: localChecked
     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Surface(shape = RoundedCornerShape(12.dp), color = iconColor, modifier = Modifier.size(44.dp)) {
             Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp)) }
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-            Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = { checked = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PH_Primary))
+        Switch(
+            checked = isChecked,
+            onCheckedChange = { enabled ->
+                if (checked == null) localChecked = enabled
+                onCheckedChange?.invoke(enabled)
+            },
+            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = MaterialTheme.colorScheme.primary),
+        )
     }
 }
 
@@ -251,10 +307,10 @@ fun SettingsNavigationItem(icon: ImageVector, iconColor: Color, contentColor: Co
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = textColor)
-            if (description != null) { Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = if (textColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else textColor)
+            if (description != null) { Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

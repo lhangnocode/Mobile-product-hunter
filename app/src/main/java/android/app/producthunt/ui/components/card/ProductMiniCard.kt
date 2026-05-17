@@ -39,7 +39,7 @@ fun ProductMiniCard(
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = PH_Surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -57,13 +57,13 @@ fun ProductMiniCard(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.LightGray)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     // Placeholder for image
                     Text(
                         text = "Img",
                         modifier = Modifier.align(Alignment.Center),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -81,7 +81,7 @@ fun ProductMiniCard(
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
-                            color = PH_OnSurface,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             modifier = Modifier.weight(1f)
                         )
@@ -94,7 +94,7 @@ fun ProductMiniCard(
                                 Icon(
                                     imageVector = if (isWishlisted) PHIcons.Wishlist else PHIcons.WishlistOutlined,
                                     contentDescription = "Wishlist",
-                                    tint = if (isWishlisted) PH_Primary else PH_OnSurface.copy(alpha = 0.6f),
+                                    tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -105,7 +105,7 @@ fun ProductMiniCard(
                                 Icon(
                                     imageVector = PHIcons.Edit,
                                     contentDescription = "Edit",
-                                    tint = PH_OnSurface.copy(alpha = 0.6f),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -116,7 +116,7 @@ fun ProductMiniCard(
                                 Icon(
                                     imageVector = PHIcons.Delete,
                                     contentDescription = "Delete",
-                                    tint = PH_OnSurface.copy(alpha = 0.6f),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -133,12 +133,12 @@ fun ProductMiniCard(
                             Text(
                                 text = "CURRENT",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = PH_OnSurface.copy(alpha = 0.6f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = currentPrice,
                                 style = PriceMedium,
-                                color = PH_Price_Current
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
@@ -190,7 +190,7 @@ fun ProductMiniCard(
 @Composable
 fun ProductMiniCardPreview() {
     AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(PH_Background)) {
+        Box(modifier = Modifier.padding(16.dp).background(MaterialTheme.colorScheme.background)) {
             ProductMiniCard(
                 title = "Sony WH-1000XM5 Headphones",
                 currentPrice = "$348.00",

@@ -1,10 +1,6 @@
 package android.app.producthunt.ui.screens.notify
 
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
-import android.app.producthunt.ui.theme.ColorOrange
-import android.app.producthunt.ui.theme.ColorSurface
-import android.app.producthunt.ui.theme.ColorText
-import android.app.producthunt.ui.theme.ColorTrackBg
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +16,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -44,7 +41,7 @@ fun MasterNotificationsCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
@@ -59,13 +56,13 @@ fun MasterNotificationsCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(ColorOrange.copy(alpha = 0.12f)),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = null,
-                        tint = ColorOrange,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -74,7 +71,7 @@ fun MasterNotificationsCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                     text = "Master Notifications",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = ColorText,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Switch(
@@ -82,9 +79,9 @@ fun MasterNotificationsCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = ColorOrange,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
                     uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = ColorTrackBg,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
             )
         }

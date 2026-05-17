@@ -1,6 +1,5 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.ui.theme.PH_Primary
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -11,11 +10,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -32,8 +31,8 @@ fun ProductFloatingActions(
         // Nút Yêu thích - Đổi Icon và Màu dựa trên isWishlisted
         FloatingActionButton(
             onClick = onWishlistClick,
-            containerColor = Color.White,
-            contentColor = if (isWishlisted) Color(0xFFE91E63) else Color.Gray,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             shape = CircleShape,
             modifier = Modifier
                 .size(56.dp)
@@ -49,8 +48,8 @@ fun ProductFloatingActions(
         // Nút Báo giá
         FloatingActionButton(
             onClick = onAlertClick,
-            containerColor = PH_Primary,
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = CircleShape,
             modifier = Modifier
                 .size(56.dp)
