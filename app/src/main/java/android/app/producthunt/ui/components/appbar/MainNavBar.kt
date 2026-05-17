@@ -1,6 +1,7 @@
 package android.app.producthunt.ui.components.appbar
 
 import android.app.producthunt.ui.navigation.Route
+import android.app.producthunt.ui.navigation.TopLevelRoutes
 import android.app.producthunt.ui.navigation.baseRouteOrNull
 import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -43,13 +43,7 @@ data class BottomNavItem(
 @Composable
 fun MainNavBar(
     navController: NavController,
-    showOnRoutes: Set<String> = setOf(
-        Route.HOME,
-        Route.TRENDING,
-        Route.WISHLIST,
-        Route.ALERTS,
-        Route.PROFILE
-    )
+    showOnRoutes: Set<String> = TopLevelRoutes.toSet(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -75,7 +69,6 @@ private fun MainNavBarContent(
             BottomNavItem(Route.TRENDING, "Xu hướng", Icons.AutoMirrored.Filled.TrendingUp),
             BottomNavItem(Route.WISHLIST, "Yêu thích", Icons.Default.Favorite),
             BottomNavItem(Route.ALERTS, "Thông báo", Icons.Default.Notifications),
-            BottomNavItem(Route.PROFILE, "Cá nhân", Icons.Default.Person)
         )
     }
 

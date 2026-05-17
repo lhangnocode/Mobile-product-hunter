@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 
 @Composable
@@ -30,38 +30,21 @@ fun WishlistScreen(
 ) {
     val wishlistState by viewModel.wishlistState.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(PH_Background)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        // Header hiện đại
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             Text(
-                text = "MY COLLECTION",
-                style = MaterialTheme.typography.labelSmall,
-                color = PH_Primary,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            )
-            Text(
-                text = "Danh sách yêu thích",
-                style = MaterialTheme.typography.headlineMedium,
-                color = PH_OnBackground,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
                 text = "Theo dõi biến động giá của những sản phẩm bạn quan tâm",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
             )
-        }
 
-        when (val state = wishlistState) {
+            when (val state = wishlistState) {
             is UiState.Loading, UiState.Idle -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = PH_Primary)
@@ -100,6 +83,7 @@ fun WishlistScreen(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -112,11 +96,11 @@ private fun EmptyWishlistState() {
                 imageVector = PHIcons.WishlistOutlined,
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                tint = Color.LightGray
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Danh sách của bạn đang trống", color = Color.Gray, fontWeight = FontWeight.Medium)
-            Text(text = "Hãy thêm sản phẩm để theo dõi giá nhé!", color = Color.LightGray, fontSize = 12.sp)
+            Text(text = "Danh sách của bạn đang trống", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Text(text = "Hãy thêm sản phẩm để theo dõi giá nhé!", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
     }
 }

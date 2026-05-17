@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 
 @Composable
@@ -34,54 +34,22 @@ fun TrendingScreen(
 ) {
     val trendingState by viewModel.trendingState.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .navigationBarsPadding()
-            .background(MaterialTheme.colorScheme.background)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        // Header
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .navigationBarsPadding()
         ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                color = PH_Primary.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    imageVector = PHIcons.Trending,
-                    contentDescription = null,
-                    modifier = Modifier.padding(12.dp),
-                    tint = PH_Primary
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = "MARKET TRENDS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PH_Primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "TRENDING DEALS",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = PH_OnBackground,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "Sản phẩm đang giảm giá thật sự (đã kiểm tra lịch sử giá)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PH_OnBackground.copy(alpha = 0.6f)
-                )
-            }
-        }
-
-        when (val state = trendingState) {
+            Text(
+                text = "Sản phẩm đang giảm giá thật sự (đã kiểm tra lịch sử giá)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
+            )
+            when (val state = trendingState) {
             is UiState.Loading, UiState.Idle -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = PH_Primary)
@@ -104,7 +72,7 @@ fun TrendingScreen(
                         Text(
                             text = "Hiện chưa có deal nào đang trending. Quay lại sau nhé!",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = PH_OnBackground.copy(alpha = 0.5f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -137,6 +105,7 @@ fun TrendingScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

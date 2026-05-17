@@ -14,28 +14,50 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
     primary = PH_Primary,
-    secondary = PH_Price_Target, // Sử dụng màu cam đậm làm màu phụ
-    tertiary = PH_Progress_Bar,  // Sử dụng màu xanh mòng két làm màu nhấn (tertiary)
-    background = PH_OnBackground, // Dùng màu xám đậm (2D2D2D) cho nền Dark Mode
-    surface = PH_OnBackground,
     onPrimary = Color.White,
+    primaryContainer = Color(0xFF5A260E),
+    onPrimaryContainer = Color(0xFFFFD8C8),
+    secondary = PH_Price_Target,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFF4A2600),
+    onSecondaryContainer = Color(0xFFFFD9B3),
+    tertiary = PH_Progress_Bar,
     onTertiary = Color.White,
-    onBackground = Color.White, // Chữ trắng trên nền tối
-    onSurface = Color.White
+    background = PH_Background_Dark,
+    onBackground = Color(0xFFF5EFEA),
+    surface = PH_Surface_Dark,
+    onSurface = Color(0xFFF5EFEA),
+    surfaceVariant = Color(0xFF2A2A2A),
+    onSurfaceVariant = Color(0xFFCFC7C0),
+    outline = Color(0xFF5F5852),
+    outlineVariant = Color(0xFF3A352F),
+    error = PH_Status_Error_Text,
+    errorContainer = Color(0xFF4A1717),
+    onErrorContainer = Color(0xFFFFDAD6),
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PH_Primary,
-    secondary = PH_Price_Target,
-    tertiary = PH_Progress_Bar,
-    background = PH_Background, // Dùng màu kem nhạt (FFF8F1) cho nền Light Mode
-    surface = PH_Surface,       // Trắng tinh cho các bề mặt (Card, Dialog)
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFE1D2),
+    onPrimaryContainer = Color(0xFF3C1700),
+    secondary = PH_Price_Target,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFE3C4),
+    onSecondaryContainer = Color(0xFF361900),
+    tertiary = PH_Progress_Bar,
     onTertiary = Color.White,
-    onBackground = PH_OnBackground, // Chữ xám đậm trên nền sáng
-    onSurface = PH_OnSurface
+    background = PH_Background,
+    onBackground = PH_OnBackground,
+    surface = PH_Surface,
+    onSurface = PH_OnSurface,
+    surfaceVariant = Color(0xFFFFEFE4),
+    onSurfaceVariant = Color(0xFF6F6258),
+    outline = Color(0xFFE8DCD2),
+    outlineVariant = Color(0xFFF0E8E0),
+    error = PH_Status_Error_Text,
+    errorContainer = PH_Status_Error_Bg,
+    onErrorContainer = Color(0xFF410002),
 )
 
 @Composable

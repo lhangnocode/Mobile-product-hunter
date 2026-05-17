@@ -39,7 +39,7 @@ fun ProductGridCard(
             .clickable { onProductClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = PH_Surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -51,7 +51,7 @@ fun ProductGridCard(
                     .height(160.dp)
                     .padding(8.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF5F5F5))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (imageUrl != null) {
                     AsyncImage(
@@ -65,7 +65,7 @@ fun ProductGridCard(
                         text = "No Image",
                         modifier = Modifier.align(Alignment.Center),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -95,12 +95,12 @@ fun ProductGridCard(
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)
                         .size(32.dp)
-                        .background(Color.White.copy(alpha = 0.8f), CircleShape)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.86f), CircleShape)
                 ) {
                     Icon(
                         imageVector = if (isWishlisted) PHIcons.Wishlist else PHIcons.WishlistOutlined,
                         contentDescription = "Wishlist",
-                        tint = if (isWishlisted) PH_Primary else PH_OnSurface.copy(alpha = 0.6f),
+                        tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -112,7 +112,7 @@ fun ProductGridCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = PH_OnSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.heightIn(min = 40.dp)
@@ -123,14 +123,14 @@ fun ProductGridCard(
                 Text(
                     text = currentPrice,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PH_Status_Success_Text
+                    color = MaterialTheme.colorScheme.tertiary
                 )
 
                 if (originalPrice != null) {
                     Text(
                         text = originalPrice,
                         style = MaterialTheme.typography.bodySmall,
-                        color = PH_OnSurface.copy(alpha = 0.4f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textDecoration = TextDecoration.LineThrough
                     )
                 }

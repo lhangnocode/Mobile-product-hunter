@@ -7,14 +7,10 @@ import android.app.producthunt.data.remote.dto.PriceRecordResponse
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.ProductDetailViewModel
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -35,11 +30,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import android.content.Intent
 import android.net.Uri
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun ProductDetailScreen(
@@ -59,7 +54,11 @@ fun ProductDetailScreen(
 
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize().background(PH_Background)) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         when (val state = listingsState) {
             is UiState.Loading, is UiState.Idle -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -85,7 +84,7 @@ fun ProductDetailScreen(
                                 text = firstListing.rawName ?: "Sản phẩm tìm thấy",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = PH_OnBackground,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 lineHeight = 36.sp
                             )
                             
@@ -117,11 +116,11 @@ fun ProductDetailScreen(
                                     modifier = Modifier
                                         .height(260.dp)
                                         .fillMaxWidth()
-                                        .background(Color.White, RoundedCornerShape(24.dp))
-                                        .border(1.dp, PH_Primary.copy(alpha = 0.1f), RoundedCornerShape(24.dp)),
+                                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Đang tổng hợp dữ liệu giá...", color = Color.Gray)
+                                    Text("Đang tổng hợp dữ liệu giá...", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
@@ -131,7 +130,7 @@ fun ProductDetailScreen(
                                 "Giá tại các sàn TMĐT",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = PH_OnBackground
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             MarketComparisonSection(listings)
@@ -144,31 +143,20 @@ fun ProductDetailScreen(
             is UiState.Error -> ErrorState(state.message, navController)
         }
 
-        // Custom Top Bar Back Button (Light Mode)
-        IconButton(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(16.dp)
-                .background(Color.White.copy(alpha = 0.9f), CircleShape)
-                .shadow(2.dp, CircleShape)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PH_OnBackground)
-        }
-
-        // Floating Action Buttons
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 32.dp, end = 16.dp)
-        ) {
-            productId?.let { id ->
-                ProductFloatingActions(
-                    productId = id,
-                    isWishlisted = isWishlisted,
-                    onWishlistClick = { viewModel.toggleWishlist(id) },
-                    onAlertClick = { /* Hiện dialog báo giá */ }
-                )
+            // Floating Action Buttons
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 32.dp, end = 16.dp)
+            ) {
+                productId?.let { id ->
+                    ProductFloatingActions(
+                        productId = id,
+                        isWishlisted = isWishlisted,
+                        onWishlistClick = { viewModel.toggleWishlist(id) },
+                        onAlertClick = { /* Hien dialog bao gia */ }
+                    )
+                }
             }
         }
     }
@@ -181,7 +169,7 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
         modifier = Modifier
             .fillMaxWidth()
             .height(380.dp)
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
@@ -209,8 +197,8 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
-                        0.7f to PH_Background.copy(alpha = 0.5f),
-                        1f to PH_Background
+                        0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                        1f to MaterialTheme.colorScheme.background
                     )
                 )
         )
@@ -237,8 +225,8 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
                 text = "%,.0f đ".format(price),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Black,
-                color = PH_OnBackground,
-                letterSpacing = (-1.5).sp
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = 0.sp
             )
         }
     }
@@ -268,16 +256,16 @@ fun PriceAnalysisCards(analysis: PriceAnalysisResponse) {
 fun AnalysisCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier) {
     Surface(
         modifier = modifier,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.1f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.height(12.dp))
-            Text(label, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PH_OnSurface)
+            Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -289,28 +277,36 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
-                .background(Color.White, RoundedCornerShape(24.dp))
-                .border(1.dp, PH_Primary.copy(alpha = 0.1f), RoundedCornerShape(24.dp)),
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text("Chưa đủ dữ liệu vẽ biểu đồ", color = Color.Gray)
+            Text("Chưa đủ dữ liệu vẽ biểu đồ", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
 
     val prices = history.map { it.price.toFloatOrNull() ?: 0f }
-    val maxPrice = prices.maxOrNull() ?: 1f
-    val minPrice = prices.minOrNull() ?: 0f
-    val range = (maxPrice - minPrice).coerceAtLeast(1f)
+    val rawMaxPrice = prices.maxOrNull() ?: 1f
+    val rawMinPrice = prices.minOrNull() ?: 0f
+    val rawRange = rawMaxPrice - rawMinPrice
+    val pricePadding = when {
+        rawMaxPrice <= 0f -> 1f
+        rawRange <= 0f -> rawMaxPrice * 0.08f
+        else -> rawRange * 0.18f
+    }.coerceAtLeast(1f)
+    val chartMaxPrice = rawMaxPrice + pricePadding
+    val chartMinPrice = (rawMinPrice - pricePadding).coerceAtLeast(0f)
+    val chartRange = (chartMaxPrice - chartMinPrice).coerceAtLeast(1f)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(280.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White)
-            .border(1.dp, PH_Primary.copy(alpha = 0.1f), RoundedCornerShape(28.dp))
-            .padding(top = 40.dp, bottom = 20.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(28.dp))
+            .padding(vertical = 12.dp)
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             val width = size.width
@@ -320,10 +316,10 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             val path = Path()
             prices.forEachIndexed { i, price ->
                 val x = i * spacing
-                val y = height - ((price - minPrice) / range * height)
+                val y = height - ((price - chartMinPrice) / chartRange * height)
                 if (i == 0) path.moveTo(x, y) else {
                     val prevX = (i - 1) * spacing
-                    val prevY = height - ((prices[i-1] - minPrice) / range * height)
+                    val prevY = height - ((prices[i-1] - chartMinPrice) / chartRange * height)
                     path.cubicTo(
                         (prevX + x) / 2f, prevY,
                         (prevX + x) / 2f, y,
@@ -348,15 +344,15 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
 
             // Current Point Bloom
             val lastX = (prices.size - 1) * spacing
-            val lastY = height - ((prices.last() - minPrice) / range * height)
+            val lastY = height - ((prices.last() - chartMinPrice) / chartRange * height)
             drawCircle(color = PH_Primary.copy(alpha = 0.2f), radius = 15.dp.toPx(), center = Offset(lastX, lastY))
             drawCircle(color = PH_Primary, radius = 6.dp.toPx(), center = Offset(lastX, lastY))
             drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(lastX, lastY))
         }
         
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text("%,.0f đ".format(maxPrice), modifier = Modifier.align(Alignment.TopStart), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-            Text("%,.0f đ".format(minPrice), modifier = Modifier.align(Alignment.BottomStart), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            Text("%,.0f đ".format(chartMaxPrice), modifier = Modifier.align(Alignment.TopStart), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            Text("%,.0f đ".format(chartMinPrice), modifier = Modifier.align(Alignment.BottomStart), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -374,9 +370,9 @@ fun MarketComparisonSection(listings: List<PlatformListingDto>) {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(listing.affiliateUrl ?: listing.url))
                         context.startActivity(intent)
                     },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, PH_Primary.copy(alpha = 0.05f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 shadowElevation = 2.dp
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -393,11 +389,11 @@ fun MarketComparisonSection(listings: List<PlatformListingDto>) {
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(platformName, fontWeight = FontWeight.Bold, color = PH_OnSurface)
+                        Text(platformName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Text(if (listing.inStock) "Còn hàng" else "Hết hàng", fontSize = 12.sp, color = if (listing.inStock) Color(0xFF00C853) else Color.Red)
                     }
                     Text("%,.0f đ".format(price), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PH_Primary)
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -408,7 +404,7 @@ fun MarketComparisonSection(listings: List<PlatformListingDto>) {
 private fun EmptyState(navController: NavController) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Không có dữ liệu", color = Color.Gray)
+            Text("Không có dữ liệu", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = { navController.popBackStack() }, modifier = Modifier.padding(top = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)) {
                 Text("Quay lại", color = Color.White)
             }

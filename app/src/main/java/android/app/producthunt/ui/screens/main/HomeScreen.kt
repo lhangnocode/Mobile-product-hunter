@@ -50,7 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
@@ -92,72 +92,75 @@ fun HomeScreen(
         alertsState.toAlertPreview()
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        item { 
-            SearchPanel(onClick = { 
-                navController.navigate(Route.SEARCH) 
-            }) 
-        }
-        item { 
-            PopularKeywordsSection(onKeywordClick = { keyword ->
-                navController.navigate("${Route.SEARCH}?q=$keyword")
-            }) 
-        }
-        item { BannerSection() }
-        item {
-            HeroDealSection(
-                title = "Sản phẩm Trending",
-                subtitle = "Các deal hot nhất trong ngày",
-                deals = hotDeals.take(5),
-                onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
-                onDealClick = { deal ->
-                    deal.id?.let { 
-                        val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
-                        navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl") 
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            item {
+                SearchPanel(onClick = {
+                    navController.navigate(Route.SEARCH)
+                })
+            }
+            item {
+                PopularKeywordsSection(onKeywordClick = { keyword ->
+                    navController.navigate("${Route.SEARCH}?q=$keyword")
+                })
+            }
+            item { BannerSection() }
+            item {
+                HeroDealSection(
+                    title = "Sản phẩm Trending",
+                    subtitle = "Các deal hot nhất trong ngày",
+                    deals = hotDeals.take(5),
+                    onViewMore = { navController.navigateToTopLevelDestination(Route.TRENDING) },
+                    onDealClick = { deal ->
+                        deal.id?.let {
+                            val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
+                            navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl")
+                        }
                     }
-                }
-            )
-        }
-        item {
-            ProductListSection(
-                productsState = productsState,
-                onProductClick = { product ->
-                    val encodedUrl = product.mainImageUrl?.let { url -> Uri.encode(url) } ?: ""
-                    navController.navigate("${Route.PRODUCT_DETAIL}/${product.id}?imageUrl=$encodedUrl")
-                }
-            )
-        }
-        item {
-            CompactPreviewSection(
-                title = "Danh sách theo dõi",
-                viewMoreText = "Xem tất cả",
-                items = wishlist.take(3),
-                onViewMore = { navController.navigateToTopLevelDestination(Route.WISHLIST) },
-                onDealClick = { deal ->
-                    deal.id?.let { 
-                        val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
-                        navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl") 
+                )
+            }
+            item {
+                ProductListSection(
+                    productsState = productsState,
+                    onProductClick = { product ->
+                        val encodedUrl = product.mainImageUrl?.let { url -> Uri.encode(url) } ?: ""
+                        navController.navigate("${Route.PRODUCT_DETAIL}/${product.id}?imageUrl=$encodedUrl")
                     }
-                }
-            )
-        }
-        item {
-            AlertPreviewSection(
-                alerts = alerts.take(3),
-                onViewMore = { navController.navigateToTopLevelDestination(Route.ALERTS) },
-                onDealClick = { deal ->
-                    deal.id?.let { 
-                        val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
-                        navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl") 
+                )
+            }
+            item {
+                CompactPreviewSection(
+                    title = "Danh sách theo dõi",
+                    viewMoreText = "Xem tất cả",
+                    items = wishlist.take(3),
+                    onViewMore = { navController.navigateToTopLevelDestination(Route.WISHLIST) },
+                    onDealClick = { deal ->
+                        deal.id?.let {
+                            val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
+                            navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl")
+                        }
                     }
-                }
-            )
+                )
+            }
+            item {
+                AlertPreviewSection(
+                    alerts = alerts.take(3),
+                    onViewMore = { navController.navigateToTopLevelDestination(Route.ALERTS) },
+                    onDealClick = { deal ->
+                        deal.id?.let {
+                            val encodedUrl = deal.imageUrl?.let { url -> Uri.encode(url) } ?: ""
+                            navController.navigate("${Route.PRODUCT_DETAIL}/$it?imageUrl=$encodedUrl")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -434,7 +437,7 @@ private fun FeaturedDealCard(deal: HomeDeal, onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 if (deal.imageUrl != null) {
@@ -448,7 +451,7 @@ private fun FeaturedDealCard(deal: HomeDeal, onClick: () -> Unit) {
                     Icon(
                         imageVector = deal.icon ?: Icons.Default.LocalOffer,
                         contentDescription = null,
-                        tint = Color.LightGray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(60.dp)
                     )
                 }
@@ -608,7 +611,7 @@ private fun MiniDealCard(deal: HomeDeal, modifier: Modifier = Modifier, onClick:
                     .fillMaxWidth()
                     .aspectRatio(1.2f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
                 if (deal.imageUrl != null) {

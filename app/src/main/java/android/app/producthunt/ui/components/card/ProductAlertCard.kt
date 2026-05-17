@@ -2,15 +2,6 @@ package android.app.producthunt.ui.components.card
 
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
-import android.app.producthunt.ui.theme.ColorBackground
-import android.app.producthunt.ui.theme.ColorBorder
-import android.app.producthunt.ui.theme.ColorGreen
-import android.app.producthunt.ui.theme.ColorOrange
-import android.app.producthunt.ui.theme.ColorOrangeDark
-import android.app.producthunt.ui.theme.ColorSurface
-import android.app.producthunt.ui.theme.ColorText
-import android.app.producthunt.ui.theme.ColorTextSub
-import android.app.producthunt.ui.theme.ColorTrackBg
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -36,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,7 +55,7 @@ fun AlertCard(alert: PriceAlert) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -82,12 +74,12 @@ fun AlertCard(alert: PriceAlert) {
                         text = alert.name,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ColorText,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = alert.subtitle,
                         fontSize = 13.sp,
-                        color = ColorTextSub,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
@@ -97,7 +89,7 @@ fun AlertCard(alert: PriceAlert) {
                     Icon(
                         Icons.Outlined.Edit,
                         contentDescription = "Edit",
-                        tint = ColorTextSub,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -108,7 +100,7 @@ fun AlertCard(alert: PriceAlert) {
                     Icon(
                         Icons.Outlined.Delete,
                         contentDescription = "Delete",
-                        tint = ColorTextSub,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -133,7 +125,7 @@ fun AlertCard(alert: PriceAlert) {
             Spacer(Modifier.height(8.dp))
 
             // Status
-            val statusColor = if (isNearTarget) ColorGreen else ColorOrange
+            val statusColor = if (isNearTarget) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
             val statusText = if (isNearTarget)
                 "↗ Near target (${distancePct}% remaining)"
             else
@@ -156,7 +148,7 @@ private fun ProductPlaceholder(color: Color, icon: ImageVector) {
             .size(64.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(color)
-            .border(1.dp, ColorBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center,
     ) {
         val iconTint = if (color == Color(0xFF1E1E2E)) Color.White else Color(0xFF555555)
@@ -176,7 +168,7 @@ private fun PriceColumn(label: String, price: Double, highlight: Boolean) {
             text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = ColorTextSub,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             letterSpacing = 0.8.sp,
         )
         Spacer(Modifier.height(2.dp))
@@ -184,8 +176,8 @@ private fun PriceColumn(label: String, price: Double, highlight: Boolean) {
             text = "$${"%.2f".format(price)}",
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = if (highlight) ColorOrange else ColorText,
-            letterSpacing = (-0.5).sp,
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            letterSpacing = 0.sp,
         )
     }
 }
@@ -202,7 +194,7 @@ private fun PriceProgressBar(progress: Float) {
             .fillMaxWidth()
             .height(6.dp)
             .clip(RoundedCornerShape(50))
-            .background(ColorTrackBg),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Box(
             modifier = Modifier
@@ -211,7 +203,7 @@ private fun PriceProgressBar(progress: Float) {
                 .clip(RoundedCornerShape(50))
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(ColorOrange, ColorOrangeDark),
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
                     ),
                 ),
         )
@@ -222,7 +214,7 @@ private fun PriceProgressBar(progress: Float) {
 @Composable
 fun ProductAlertCardPreview() {
     AndroidAppProductHuntTheme {
-        Box(modifier = Modifier.padding(16.dp).background(ColorBackground)) {
+        Box(modifier = Modifier.padding(16.dp).background(MaterialTheme.colorScheme.background)) {
             AlertCard(
                 alert = PriceAlert(
                     id = 1,

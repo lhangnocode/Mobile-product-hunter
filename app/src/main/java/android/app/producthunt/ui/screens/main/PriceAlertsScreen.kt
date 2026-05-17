@@ -12,6 +12,7 @@ import android.app.producthunt.ui.theme.ColorOrange
 import android.app.producthunt.ui.theme.ColorSurface
 import android.app.producthunt.ui.theme.ColorText
 import android.app.producthunt.ui.theme.ColorTextSub
+import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.theme.ColorTrackBg
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -125,40 +126,41 @@ fun PriceAlertsScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp),
-        ) {
-            item { PageHeader(onAddClick = { showSheet = true }) }
-            item {
-                Spacer(Modifier.height(20.dp))
-                MasterNotificationsCard(
-                    enabled = notificationsEnabled,
-                    onToggle = { notificationsEnabled = it },
-                )
-                Spacer(Modifier.height(24.dp))
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 16.dp),
+            ) {
+                item { PageHeader(onAddClick = { showSheet = true }) }
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    MasterNotificationsCard(
+                        enabled = notificationsEnabled,
+                        onToggle = { notificationsEnabled = it },
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
+                item {
+                    SectionLabel("● ACTIVE PRECISION TRACKING")
+                    Spacer(Modifier.height(12.dp))
+                }
+                items(alerts.size) { index ->
+                    AlertCard(alert = alerts[index])
+                    Spacer(Modifier.height(12.dp))
+                }
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    SectionLabel("◌ UPCOMING ALERTS")
+                    Spacer(Modifier.height(12.dp))
+                    NoScheduledDropsCard()
+                }
             }
-            item {
-                SectionLabel("● ACTIVE PRECISION TRACKING")
-                Spacer(Modifier.height(12.dp))
-            }
-            items(alerts.size) { index ->
-                AlertCard(alert = alerts[index])
-                Spacer(Modifier.height(12.dp))
-            }
-            item {
-                Spacer(Modifier.height(8.dp))
-                SectionLabel("◌ UPCOMING ALERTS")
-                Spacer(Modifier.height(12.dp))
-                NoScheduledDropsCard()
-            }
-        }
 
+        }
     }
 }
 
@@ -176,15 +178,15 @@ private fun TopBar() {
         Icon(
             imageVector = Icons.Default.Menu,
             contentDescription = "Menu",
-            tint = ColorOrange,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(26.dp),
         )
         Text(
             text = "ProductHunter",
             fontSize = 18.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = ColorOrange,
-            letterSpacing = (-0.5).sp,
+            color = MaterialTheme.colorScheme.primary,
+            letterSpacing = 0.sp,
         )
         Box(
             modifier = Modifier
@@ -214,36 +216,20 @@ private fun PageHeader(onAddClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
+            .padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Text(
-                text = "Price Alerts",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
-                color = ColorText,
-                lineHeight = 42.sp,
-                letterSpacing = (-1).sp,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Manage your precision tracking",
-                fontSize = 13.sp,
-                color = ColorTextSub,
-            )
-        }
         Button(
             onClick = onAddClick,
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ColorOrange),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             modifier = Modifier.shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                ambientColor = ColorOrange.copy(alpha = 0.4f),
-                spotColor = ColorOrange.copy(alpha = 0.5f),
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
             ),
         ) {
             Icon(
@@ -272,7 +258,7 @@ private fun SectionLabel(text: String) {
         text = text,
         fontSize = 10.sp,
         fontWeight = FontWeight.Bold,
-        color = ColorTextSub,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 1.sp,
         modifier = Modifier.padding(horizontal = 20.dp),
     )
@@ -287,7 +273,7 @@ private fun NoScheduledDropsCard() {
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = ColorSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
@@ -300,13 +286,13 @@ private fun NoScheduledDropsCard() {
                 modifier = Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(ColorDivider),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Schedule,
-                    contentDescription = null,
-                    tint = ColorTextSub,
+                imageVector = Icons.Outlined.Schedule,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -315,13 +301,13 @@ private fun NoScheduledDropsCard() {
                 text = "No Scheduled Drops",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = ColorText,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "You don't have any seasonal or recurring alerts set up. Track historical sales to anticipate the next big dip.",
                 fontSize = 13.sp,
-                color = ColorTextSub,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 19.sp,
                 textAlign = TextAlign.Center,
             )
@@ -330,7 +316,7 @@ private fun NoScheduledDropsCard() {
                 text = "Browse Price History Trends",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = ColorOrange,
+                color = MaterialTheme.colorScheme.primary,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier.clickable { },
             )
@@ -362,7 +348,7 @@ private fun BottomNavBar(
 
     Surface(
         shadowElevation = 16.dp,
-        color = ColorSurface,
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Row(
             modifier = Modifier
@@ -378,7 +364,7 @@ private fun BottomNavBar(
 @Composable
 private fun NavBarItem(item: NavItem) {
     val tint by animateColorAsState(
-        targetValue = if (item.selected) ColorOrange else ColorTextSub,
+        targetValue = if (item.selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "nav_tint_${item.label}",
     )
     Column(
@@ -424,7 +410,7 @@ private fun AddAlertSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = ColorSurface,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = Modifier.imePadding(),
     ) {
         Column(
@@ -435,8 +421,8 @@ private fun AddAlertSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Header
-            Text("Set Price Range", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = ColorText)
-            Text("Alert when price falls within your target", fontSize = 13.sp, color = ColorTextSub)
+            Text("Set Price Range", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+            Text("Alert when price falls within your target", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             // Min / Max input row
             Row(
@@ -450,9 +436,9 @@ private fun AddAlertSheet(
             ) {
                 listOf("Min" to minInput, "Max" to maxInput).forEachIndexed { i, (label, value) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextSub, letterSpacing = 0.8.sp)
+                        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 0.8.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("$", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ColorOrange)
+                            Text("$", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             OutlinedTextField(
                                 value = value,
                                 onValueChange = { raw ->
@@ -467,15 +453,15 @@ private fun AddAlertSheet(
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = ColorOrange, unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color.Transparent,
                                     focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                                 ),
-                                textStyle = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = ColorText),
+                                textStyle = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface),
                                 modifier = Modifier.width(80.dp),
                             )
                         }
                     }
-                    if (i == 0) Box(Modifier.size(32.dp, 2.dp).background(ColorBorder))
+                    if (i == 0) Box(Modifier.size(32.dp, 2.dp).background(MaterialTheme.colorScheme.outlineVariant))
                 }
             }
 
@@ -485,12 +471,12 @@ private fun AddAlertSheet(
                 onValueChange = ::syncFromSlider,
                 valueRange = 0f..2000f,
                 colors = SliderDefaults.colors(
-                    thumbColor = ColorOrange, activeTrackColor = ColorOrange, inactiveTrackColor = ColorTrackBg,
+                    thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
             )
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Text("$0", fontSize = 11.sp, color = ColorTextSub)
-                Text("$2,000", fontSize = 11.sp, color = ColorTextSub)
+                Text("$0", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$2,000", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             // Quick presets
@@ -502,13 +488,13 @@ private fun AddAlertSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) ColorOrange else MaterialTheme.colorScheme.background)
-                            .border(1.dp, if (selected) ColorOrange else ColorBorder, RoundedCornerShape(10.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background)
+                            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                             .clickable { syncFromSlider(preset) }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else ColorTextSub, textAlign = TextAlign.Center)
+                        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -518,7 +504,7 @@ private fun AddAlertSheet(
                 onClick = onConfirm,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ColorOrange),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             ) {
                 Text("Set Alert  \$${range.start.toInt()} – \$${range.endInclusive.toInt()}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
