@@ -8,6 +8,7 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.domain.UiState
+import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
                     floatingActionButton = {
                         when (chrome.fab) {
                             FabType.HomeAlert -> FloatingActionButton(
-                                onClick = { navController.navigate(Route.ALERTS) },
+                                onClick = { navController.navigateToTopLevelDestination(Route.ALERTS) },
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                                 shape = CircleShape,
