@@ -1,27 +1,29 @@
 package android.app.producthunt.ui.navigation
 
-import android.app.producthunt.ui.screens.main.MainScreen
-import android.app.producthunt.ui.screens.LoginScreen
-import android.app.producthunt.ui.screens.ProductDetailScreen
+import android.app.producthunt.ui.screens.*
+import android.app.producthunt.ui.screens.main.*
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
 import androidx.navigation.navArgument
 
 const val ANIM_DURATION = 300
 
 @Composable
-fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
+fun AppNavGraph(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    startDestination: String = Route.AUTH_GATE,
+) {
     NavHost(
         navController = navController,
-        // Đặt PRODUCT_DETAIL làm startDestination để chạy app là thấy ngay
-        startDestination = Route.PRODUCT_DETAIL,
+        startDestination = startDestination,
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(
@@ -48,28 +50,84 @@ fun AppNavGraph(navController: NavHostController, modifier: Modifier = Modifier)
             )
         }
     ) {
-        composable(Route.LOGIN) { LoginScreen(navController = navController) }
-        composable(Route.PRODUCT_DETAIL) { ProductDetailScreen(navController = navController) }
-        
-        composable(Route.HOME) { ProductDetailScreen(navController = navController) }
-        composable(Route.SIGNUP) { }
-        composable(Route.FORGOT_PASSWORD) { }
-        composable(Route.VERIFY_OTP + "?email={email}", arguments = listOf(navArgument("email") {
-            type = NavType.StringType;
-            defaultValue = "";
-        })) { }
+        composable(Route.AUTH_GATE) {
+            AuthGateScreen(navController = navController)
+        }
+
+        composable(Route.LOGIN) {
+            LoginScreen(navController = navController)
+        }
+
+        composable(Route.HOME) {
+            HomeScreen(navController = navController)
+        }
+
         composable(
-            Route.RESET_PASSWORD + "?email={email}&otp={otp}", arguments = listOf(
-            navArgument("email") {
+            route = "${Route.SEARCH}?q={q}",
+            arguments = listOf(navArgument("q") { 
                 type = NavType.StringType
-                defaultValue = ""
-            },
-            navArgument("otp") {
-                type = NavType.StringType
-                defaultValue = ""
-            }
-        )) { }
-        composable(Route.MAIN) { MainScreen() }
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val query = backStackEntry.arguments?.getString("q")
+            SearchScreen(navController = navController, initialQuery = query)
+        }
+
+        composable(Route.TRENDING) {
+            TrendingScreen(navController = navController)
+        }
+
+        composable(Route.WISHLIST) {
+            WishlistScreen(navController = navController)
+        }
+
+        composable(Route.ALERTS) {
+            PriceAlertsScreen(
+                onNavigateToHunt = { navController.navigate(Route.HOME) },
+                onNavigateToDeals = { navController.navigate(Route.TRENDING) },
+                onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
+            )
+        }
+
+        composable(Route.PROFILE) {
+            ProfileScreen(navController = navController)
+        }
+
+        composable(
+            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}",
+            arguments = listOf(
+                navArgument("productId") { type = NavType.StringType },
+                navArgument("imageUrl") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")
+            val imageUrl = backStackEntry.arguments?.getString("imageUrl")
+            ProductDetailScreen(navController = navController, productId = productId, imageUrl = imageUrl)
+        }
+
+        composable(Route.SIGNUP) {
+            SignupScreen(navController = navController)
+        }
+
+        composable(Route.FORGOT_PASSWORD) {
+            ForgotPasswordScreen(navController = navController)
+        }
+
+        composable("${Route.VERIFY_OTP}/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            VerifyOtpScreen(navController = navController, email = email)
+        }
+
+        composable("${Route.RESET_PASSWORD}/{email}/{otp}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val otp = backStackEntry.arguments?.getString("otp") ?: ""
+            ResetPasswordScreen(navController = navController, email = email, otp = otp)
+        }
     }
 }
 

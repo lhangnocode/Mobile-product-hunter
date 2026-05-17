@@ -1,5 +1,11 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.domain.UiState
+import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.theme.*
+import android.app.producthunt.ui.viewmodel.TrendingViewModel
+import android.app.producthunt.ui.navigation.Route
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -8,43 +14,31 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.app.producthunt.ui.components.card.ProductGridCard
-import android.app.producthunt.ui.theme.*
-
-data class ProductDeal(
-    val id: String,
-    val title: String,
-    val currentPrice: String,
-    val originalPrice: String?,
-    val discount: String?,
-    val isWishlisted: Boolean = false
-)
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 
 @Composable
 fun TrendingScreen(
-    modifier: Modifier = Modifier
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: TrendingViewModel = hiltViewModel(),
 ) {
-    val trendingDeals = listOf(
-        ProductDeal("1", "Tablet Apple Ipad Air M2 11 Inch", "14.190.000 đ", "16.990.000 đ", "-16%"),
-        ProductDeal("2", "Smartphone Honor X9d", "9.790.000 đ", "10.990.000 đ", "-11%", true),
-        ProductDeal("3", "Smartphone Samsung Galaxy A36 5G", "7.340.000 đ", "8.140.000 đ", "-10%"),
-        ProductDeal("4", "Tablet Samsung Galaxy Tab S10 Lite", "7.990.000 đ", "8.990.000 đ", "-11%"),
-        ProductDeal("5", "Smartphone Apple iPhone 16 Plus", "24.990.000 đ", "26.990.000 đ", "-8%"),
-        ProductDeal("6", "Smartphone Samsung Galaxy A56", "9.250.000 đ", "9.990.000 đ", "-8%"),
-        ProductDeal("7", "Generic Honor X5b Plus", "2.240.000 đ", "2.990.000 đ", "-25%"),
-        ProductDeal("8", "Tablet Lenovo Tab 10", "3.650.000 đ", "4.190.000 đ", "-13%")
-    )
+    val trendingState by viewModel.trendingState.collectAsState()
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(PH_Background)
+            .navigationBarsPadding()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Row(
@@ -87,33 +81,63 @@ fun TrendingScreen(
             }
         }
 
-        // Product Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            contentPadding = PaddingValues(bottom = 80.dp) // Space for bottom nav
-        ) {
-            items(trendingDeals) { deal ->
-                ProductGridCard(
-                    title = deal.title,
-                    currentPrice = deal.currentPrice,
-                    originalPrice = deal.originalPrice,
-                    discount = deal.discount,
-                    isWishlisted = deal.isWishlisted,
-                    onProductClick = { /* Handle click */ },
-                    onWishlistClick = { /* Handle wishlist */ }
-                )
+        when (val state = trendingState) {
+            is UiState.Loading, UiState.Idle -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PH_Primary)
+                }
+            }
+            is UiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = state.message,
+                        color = PH_Status_Error_Text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(32.dp)
+                    )
+                }
+            }
+            is UiState.Success -> {
+                if (state.data.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Hiện chưa có deal nào đang trending. Quay lại sau nhé!",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = PH_OnBackground.copy(alpha = 0.5f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(state.data) { deal ->
+                            val discountLabel = deal.discountPercent?.let { "-${it.toInt()}%" }
+                            val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
+                            val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                            
+                            ProductGridCard(
+                                title = deal.productName,
+                                currentPrice = currentPriceLabel,
+                                imageUrl = deal.mainImageUrl,
+                                originalPrice = originalPriceLabel,
+                                discount = discountLabel,
+                                isWishlisted = false,
+                                onProductClick = {
+                                    val encodedUrl = deal.mainImageUrl?.let { Uri.encode(it) } ?: ""
+                                    navController.navigate("${Route.PRODUCT_DETAIL}/${deal.id}?imageUrl=$encodedUrl")
+                                },
+                                onWishlistClick = {},
+                            )
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun TrendingScreenPreview() {
-    AndroidAppProductHuntTheme {
-        TrendingScreen()
     }
 }

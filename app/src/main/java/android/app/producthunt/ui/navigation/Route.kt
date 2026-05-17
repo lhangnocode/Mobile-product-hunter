@@ -1,7 +1,7 @@
 package android.app.producthunt.ui.navigation
 
 object Route {
-    const val MAIN: String = "main"
+    const val AUTH_GATE = "auth_gate"
     const val LOGIN = "login"
     const val SIGNUP = "signup"
     const val FORGOT_PASSWORD = "forgot_password"
@@ -9,6 +9,7 @@ object Route {
     const val RESET_PASSWORD = "reset_password"
     
     const val HOME = "home"
+    const val SEARCH = "search"
     const val TRENDING = "trending"
     const val WISHLIST = "wishlist"
     const val ALERTS = "alerts"

@@ -5,7 +5,9 @@ import androidx.compose.ui.graphics.Color
 // ProductHunter Colors
 val PH_Primary = Color(0xFFFF8A50)
 val PH_Background = Color(0xFFFFF8F1)
+val PH_Background_Dark = Color(0xFF0F0F0F)
 val PH_Surface = Color(0xFFFFFFFF)
+val PH_Surface_Dark = Color(0xFF1E1E1E)
 val PH_OnBackground = Color(0xFF2D2D2D)
 val PH_OnSurface = Color(0xFF2D2D2D)
 

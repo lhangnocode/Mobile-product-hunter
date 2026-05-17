@@ -2,6 +2,7 @@ package android.app.producthunt.ui.components.appbar
 
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRouteOrNull
+import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -11,11 +12,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -57,11 +58,7 @@ fun MainNavBar(
         isVisible = currentDestination.isInRoutes(showOnRoutes),
         isSelected = { matchRoutes -> currentDestination.isInRoutes(matchRoutes) },
         onItemClick = { route ->
-            navController.navigate(route) {
-                launchSingleTop = true
-                restoreState = true
-                popUpTo(navController.graph.startDestinationId) { saveState = true }
-            }
+            navController.navigateToTopLevelDestination(route)
         }
     )
 }
@@ -75,7 +72,7 @@ private fun MainNavBarContent(
     val items = remember {
         listOf(
             BottomNavItem(Route.HOME, "Trang chủ", Icons.Default.Home),
-            BottomNavItem(Route.TRENDING, "Xu hướng", Icons.Default.TrendingUp),
+            BottomNavItem(Route.TRENDING, "Xu hướng", Icons.AutoMirrored.Filled.TrendingUp),
             BottomNavItem(Route.WISHLIST, "Yêu thích", Icons.Default.Favorite),
             BottomNavItem(Route.ALERTS, "Thông báo", Icons.Default.Notifications),
             BottomNavItem(Route.PROFILE, "Cá nhân", Icons.Default.Person)
@@ -104,7 +101,7 @@ private fun MainNavBarContent(
                 val selected = isSelected(item.matchRoutes)
                 NavigationBarItem(
                     selected = selected,
-                    onClick = { if (!selected) onItemClick(item.route) },
+                    onClick = { onItemClick(item.route) },
                     icon = { Icon(item.icon, contentDescription = item.label) },
                     label = { Text(item.label) },
                     colors = NavigationBarItemDefaults.colors(
