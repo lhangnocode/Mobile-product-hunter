@@ -1,7 +1,6 @@
 package android.app.producthunt.ui.screens
 
 import android.app.producthunt.domain.UiState
-import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.layout.*
@@ -22,73 +21,82 @@ import androidx.navigation.NavController
 
 @Composable
 fun ForgotPasswordScreen(
-    navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     var email by remember { mutableStateOf("") }
     val forgotPasswordState by viewModel.forgotPasswordState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(forgotPasswordState) {
         if (forgotPasswordState is UiState.Success) {
-            navController.navigate("${Route.VERIFY_OTP}/$email")
+            snackbarHostState.showSnackbar(
+                message = (forgotPasswordState as UiState.Success).data,
+                duration = SnackbarDuration.Long
+            )
             viewModel.resetForgotPasswordState()
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Column(
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(PHSpacing.ScreenHorizontal),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(padding),
+            color = MaterialTheme.colorScheme.background,
         ) {
-            Text(
-                text = "Nhập email của bạn để nhận mã xác thực (OTP)",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                placeholder = { Text("example@gmail.com") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (forgotPasswordState is UiState.Error) {
-                Text(
-                    text = (forgotPasswordState as UiState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Button(
-                onClick = { viewModel.forgotPassword(email) },
-                enabled = email.isNotBlank() && forgotPasswordState !is UiState.Loading,
-                shape = RoundedCornerShape(12.dp),
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
+                    .fillMaxSize()
+                    .padding(PHSpacing.ScreenHorizontal),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (forgotPasswordState is UiState.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                Text(
+                    text = "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    placeholder = { Text("example@gmail.com") },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (forgotPasswordState is UiState.Error) {
+                    Text(
+                        text = (forgotPasswordState as UiState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
                     )
-                } else {
-                    Text("GỬI MÃ OTP", fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = { viewModel.forgotPassword(email) },
+                    enabled = email.isNotBlank() && forgotPasswordState !is UiState.Loading,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    if (forgotPasswordState is UiState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("GỬI LIÊN KẾT", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

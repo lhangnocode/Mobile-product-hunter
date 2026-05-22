@@ -40,8 +40,7 @@ data class VerifyOtpRequest(
 )
 
 data class ResetPasswordRequest(
-    @SerializedName("email") val email: String,
-    @SerializedName("otp") val otp: String,
+    @SerializedName("token") val token: String,
     @SerializedName("new_password") val newPassword: String
 )
 

@@ -67,17 +67,10 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun verifyOtp(email: String, otp: String) {
-        viewModelScope.launch {
-            _verifyOtpState.value = UiState.Loading
-            _verifyOtpState.value = repository.verifyOtp(email, otp)
-        }
-    }
-
-    fun resetPassword(email: String, otp: String, newPassword: String) {
+    fun resetPassword(token: String, newPassword: String) {
         viewModelScope.launch {
             _resetPasswordState.value = UiState.Loading
-            _resetPasswordState.value = repository.resetPassword(email, otp, newPassword)
+            _resetPasswordState.value = repository.resetPassword(token, newPassword)
         }
     }
 

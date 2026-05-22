@@ -228,12 +228,7 @@ private fun String?.toChromeConfig(): ChromeConfig =
         Route.FORGOT_PASSWORD -> ChromeConfig(
             topBar = TopBarType.Child,
             title = "Quên mật khẩu",
-            subtitle = "Nhận mã xác thực qua email",
-        )
-        Route.VERIFY_OTP -> ChromeConfig(
-            topBar = TopBarType.Child,
-            title = "Xác thực OTP",
-            subtitle = "Nhập mã 6 chữ số",
+            subtitle = "Nhận link đặt lại qua email",
         )
         Route.RESET_PASSWORD -> ChromeConfig(
             topBar = TopBarType.Child,

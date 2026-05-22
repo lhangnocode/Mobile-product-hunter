@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 
 const val ANIM_DURATION = 300
 
@@ -138,18 +139,26 @@ fun AppNavGraph(
         }
 
         composable(Route.FORGOT_PASSWORD) {
-            ForgotPasswordScreen(navController = navController)
+            ForgotPasswordScreen()
         }
 
-        composable("${Route.VERIFY_OTP}/{email}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            VerifyOtpScreen(navController = navController, email = email)
-        }
-
-        composable("${Route.RESET_PASSWORD}/{email}/{otp}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            val otp = backStackEntry.arguments?.getString("otp") ?: ""
-            ResetPasswordScreen(navController = navController, email = email, otp = otp)
+        composable(
+            route = "${Route.RESET_PASSWORD}?token={token}",
+            arguments = listOf(
+                navArgument("token") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+            deepLinks = listOf(
+                navDeepLink {
+                    uriPattern = "https://producthunt.example.com/reset-password?token={token}"
+                }
+            )
+        ) { backStackEntry ->
+            val token = backStackEntry.arguments?.getString("token") ?: ""
+            ResetPasswordScreen(navController = navController, token = token)
         }
     }
 }
