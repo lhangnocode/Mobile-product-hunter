@@ -3,9 +3,10 @@ package android.app.producthunt.data.remote.dto
 import com.google.gson.annotations.SerializedName
 
 data class ProductResponse(
-    @SerializedName("id") val id: String,
-    @SerializedName("normalized_name") val normalizedName: String,
-    @SerializedName("product_name") val productName: String,
+    @SerializedName("id") val id: String?,
+    @SerializedName("normalized_name") val normalizedName: String?,
+    @SerializedName("product_name") val productName: String?,
+    @SerializedName("raw_name") val rawName: String? = null,
     @SerializedName("slug") val slug: String?,
     @SerializedName("main_image_url") val mainImageUrl: String?,
     @SerializedName("brand") val brand: String?,
@@ -19,10 +20,10 @@ data class PlatformListingDto(
     @SerializedName("raw_name") val rawName: String?,
     @SerializedName("url") val url: String,
     @SerializedName("affiliate_url") val affiliateUrl: String?,
-    @SerializedName("current_price") val currentPrice: String, // Server trả về String
+    @SerializedName("current_price") val currentPrice: String, 
     @SerializedName("original_price") val originalPrice: String?,
     @SerializedName("in_stock") val inStock: Boolean,
-    @SerializedName("last_crawled_at") val lastCrawledAt: String?,
+    @SerializedName("last_crawled_at") val lastCrawlledAt: String?,
 )
 
 data class SearchCompareItem(

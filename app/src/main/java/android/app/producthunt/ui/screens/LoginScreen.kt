@@ -66,7 +66,8 @@ fun LoginScreen(
     LaunchedEffect(loginState) {
         if (loginState is UiState.Success) {
             viewModel.resetLoginState()
-            navController.navigate(Route.HOME) {
+            // Updated: Navigate to SEARCH (the main conversational UI)
+            navController.navigate(Route.SEARCH) {
                 popUpTo(Route.LOGIN) { inclusive = true }
             }
         }

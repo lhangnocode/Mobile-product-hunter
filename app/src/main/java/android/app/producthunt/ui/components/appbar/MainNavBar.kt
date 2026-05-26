@@ -13,10 +13,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -65,10 +64,9 @@ private fun MainNavBarContent(
 ) {
     val items = remember {
         listOf(
-            BottomNavItem(Route.HOME, "Trang chủ", Icons.Default.Home),
-            BottomNavItem(Route.TRENDING, "Xu hướng", Icons.AutoMirrored.Filled.TrendingUp),
-            BottomNavItem(Route.WISHLIST, "Yêu thích", Icons.Default.Favorite),
-            BottomNavItem(Route.ALERTS, "Thông báo", Icons.Default.Notifications),
+            BottomNavItem(Route.FEED, "Feed", Icons.Default.RssFeed),
+            BottomNavItem(Route.SEARCH, "Search", Icons.Default.ChatBubbleOutline),
+            BottomNavItem(Route.WISHLIST, "Wishlist", Icons.Default.FavoriteBorder),
         )
     }
 
@@ -121,7 +119,7 @@ fun MainNavBarPreview() {
     AndroidAppProductHuntTheme {
         MainNavBarContent(
             isVisible = true,
-            isSelected = { it.contains(Route.HOME) },
+            isSelected = { it.contains(Route.FEED) },
             onItemClick = {}
         )
     }

@@ -17,10 +17,9 @@ import androidx.navigation.navDeepLink
 const val ANIM_DURATION = 300
 
 val TopLevelRoutes = listOf(
-    Route.HOME,
-    Route.TRENDING,
+    Route.FEED,
+    Route.SEARCH,
     Route.WISHLIST,
-    Route.ALERTS,
 )
 
 @Composable
@@ -82,7 +81,8 @@ fun AppNavGraph(
             LoginScreen(navController = navController)
         }
 
-        composable(Route.HOME) {
+        composable(Route.FEED) {
+            // Re-using HomeScreen as FeedScreen for now, will refactor later
             HomeScreen(navController = navController)
         }
 
@@ -95,11 +95,8 @@ fun AppNavGraph(
             })
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("q")
+            // SearchScreen will be the Chat-based interface
             SearchScreen(navController = navController, initialQuery = query)
-        }
-
-        composable(Route.TRENDING) {
-            TrendingScreen(navController = navController)
         }
 
         composable(Route.WISHLIST) {
@@ -108,14 +105,19 @@ fun AppNavGraph(
 
         composable(Route.ALERTS) {
             PriceAlertsScreen(
-                onNavigateToHunt = { navController.navigate(Route.HOME) },
-                onNavigateToDeals = { navController.navigate(Route.TRENDING) },
+                onNavigateToHunt = { navController.navigate(Route.FEED) },
+                onNavigateToDeals = { navController.navigate(Route.FEED) }, // Adjusting to Feed
                 onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
             )
         }
 
         composable(Route.PROFILE) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(Route.SEARCH_HISTORY) {
+            // Placeholder for Search History Screen
+            SearchHistoryScreen(navController = navController)
         }
 
         composable(
