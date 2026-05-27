@@ -8,6 +8,7 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.domain.UiState
+import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
