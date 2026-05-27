@@ -3,42 +3,31 @@ package android.app.producthunt.ui.components.appbar
 import android.app.producthunt.R
 import android.app.producthunt.ui.theme.PHSpacing
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-private val TopAppBarBlack = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+private val TopAppBarBlack = Color(0xFF1A1A1A)
 
 @Composable
 fun ProductHunterMainTopAppBar(
     modifier: Modifier = Modifier,
-    onSearchClick: (() -> Unit)? = null,
+    onMenuClick: () -> Unit = {},
     onProfileClick: (() -> Unit)? = null,
 ) {
     Surface(
@@ -51,27 +40,26 @@ fun ProductHunterMainTopAppBar(
             modifier = Modifier
                 .statusBarsPadding()
                 .fillMaxWidth()
-                .padding(horizontal = PHSpacing.AppBarHorizontal, vertical = PHSpacing.AppBarVertical),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    tint = Color.White,
+                )
+            }
+            
             Text(
-                text = "ProductHunter",
-                style = MaterialTheme.typography.titleLarge,
-                color = androidx.compose.ui.graphics.Color.White,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text = "Product Hunter",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
-            if (onSearchClick != null) {
-                IconButton(onClick = onSearchClick) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = androidx.compose.ui.graphics.Color.White,
-                    )
-                }
-            }
+
             if (onProfileClick != null) {
                 IconButton(onClick = onProfileClick) {
                     Image(
@@ -79,10 +67,12 @@ fun ProductHunterMainTopAppBar(
                         contentDescription = "Profile",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(32.dp)
                             .clip(CircleShape),
                     )
                 }
+            } else {
+                Spacer(modifier = Modifier.size(48.dp))
             }
         }
     }
@@ -96,18 +86,16 @@ fun ProductHunterChildTopAppBar(
     subtitle: String? = null,
     onBack: () -> Unit,
     showSearchAction: Boolean = false,
-    showCalendarAction: Boolean = false,
     onSearchClick: () -> Unit = {},
-    onCalendarClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    MediumTopAppBar(
+    TopAppBar(
         modifier = modifier.fillMaxWidth(),
         title = {
             Column {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -134,19 +122,13 @@ fun ProductHunterChildTopAppBar(
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 }
             }
-            if (showCalendarAction) {
-                IconButton(onClick = onCalendarClick) {
-                    Icon(Icons.Default.CalendarToday, contentDescription = "Calendar")
-                }
-            }
         },
-        expandedHeight = 104.dp,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = TopAppBarBlack,
             scrolledContainerColor = TopAppBarBlack,
-            navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
-            titleContentColor = androidx.compose.ui.graphics.Color.White,
-            actionIconContentColor = androidx.compose.ui.graphics.Color.White,
+            navigationIconContentColor = Color.White,
+            titleContentColor = Color.White,
+            actionIconContentColor = Color.White,
         ),
         scrollBehavior = scrollBehavior,
     )

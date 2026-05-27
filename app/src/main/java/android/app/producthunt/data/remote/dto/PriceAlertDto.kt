@@ -15,4 +15,7 @@ data class PriceAlertResponse(
     @SerializedName("is_active") val isActive: Boolean,
     @SerializedName("created_at") val createdAt: String?,
     @SerializedName("product") val product: ProductResponse?,
+    // Fallback fields for display
+    @SerializedName("product_name") val productName: String? = null,
+    @SerializedName("main_image_url") val mainImageUrl: String? = null,
 )

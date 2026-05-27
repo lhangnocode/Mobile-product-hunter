@@ -27,8 +27,7 @@ import androidx.navigation.NavController
 @Composable
 fun ResetPasswordScreen(
     navController: NavController,
-    email: String,
-    otp: String,
+    token: String,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     var newPassword by remember { mutableStateOf("") }
@@ -58,7 +57,7 @@ fun ResetPasswordScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Vui lòng nhập mật khẩu mới cho tài khoản $email",
+                text = "Vui lòng nhập mật khẩu mới cho tài khoản của bạn",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
@@ -105,9 +104,9 @@ fun ResetPasswordScreen(
             }
 
             Button(
-                onClick = { viewModel.resetPassword(email, otp, newPassword) },
+                onClick = { viewModel.resetPassword(token, newPassword) },
                 enabled = newPassword.length >= 6 && newPassword == confirmPassword 
-                        && resetPasswordState !is UiState.Loading,
+                        && token.isNotBlank() && resetPasswordState !is UiState.Loading,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()

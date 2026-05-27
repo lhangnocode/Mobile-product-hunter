@@ -4,6 +4,7 @@ import android.app.producthunt.ui.screens.*
 import android.app.producthunt.ui.screens.main.*
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
@@ -12,14 +13,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 
 const val ANIM_DURATION = 300
 
 val TopLevelRoutes = listOf(
-    Route.HOME,
-    Route.TRENDING,
+    Route.FEED,
+    Route.SEARCH,
     Route.WISHLIST,
-    Route.ALERTS,
 )
 
 @Composable
@@ -81,7 +82,8 @@ fun AppNavGraph(
             LoginScreen(navController = navController)
         }
 
-        composable(Route.HOME) {
+        composable(Route.FEED) {
+            // Re-using HomeScreen as FeedScreen for now, will refactor later
             HomeScreen(navController = navController)
         }
 
@@ -94,11 +96,8 @@ fun AppNavGraph(
             })
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("q")
+            // SearchScreen will be the Chat-based interface
             SearchScreen(navController = navController, initialQuery = query)
-        }
-
-        composable(Route.TRENDING) {
-            TrendingScreen(navController = navController)
         }
 
         composable(Route.WISHLIST) {
@@ -107,14 +106,19 @@ fun AppNavGraph(
 
         composable(Route.ALERTS) {
             PriceAlertsScreen(
-                onNavigateToHunt = { navController.navigate(Route.HOME) },
-                onNavigateToDeals = { navController.navigate(Route.TRENDING) },
+                onNavigateToHunt = { navController.navigate(Route.FEED) },
+                onNavigateToDeals = { navController.navigate(Route.FEED) }, // Adjusting to Feed
                 onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
             )
         }
 
         composable(Route.PROFILE) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(Route.SEARCH_HISTORY) {
+            // Placeholder for Search History Screen
+            SearchHistoryScreen(navController = navController)
         }
 
         composable(
@@ -138,18 +142,30 @@ fun AppNavGraph(
         }
 
         composable(Route.FORGOT_PASSWORD) {
-            ForgotPasswordScreen(navController = navController)
+            ForgotPasswordScreen()
         }
 
-        composable("${Route.VERIFY_OTP}/{email}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            VerifyOtpScreen(navController = navController, email = email)
+        composable(
+            route = "${Route.RESET_PASSWORD}?token={token}",
+            arguments = listOf(
+                navArgument("token") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+            deepLinks = listOf(
+                navDeepLink {
+                    uriPattern = "https://producthunt.example.com/reset-password?token={token}"
+                }
+            )
+        ) { backStackEntry ->
+            val token = backStackEntry.arguments?.getString("token") ?: ""
+            ResetPasswordScreen(navController = navController, token = token)
         }
 
-        composable("${Route.RESET_PASSWORD}/{email}/{otp}") { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email") ?: ""
-            val otp = backStackEntry.arguments?.getString("otp") ?: ""
-            ResetPasswordScreen(navController = navController, email = email, otp = otp)
+        composable(Route.APP_INFORMATION) {
+            AppInformationScreen(modifier = Modifier.fillMaxSize())
         }
     }
 }

@@ -26,20 +26,13 @@ class AuthRepository @Inject constructor(
 
     suspend fun forgotPassword(email: String): UiState<String> = try {
         val response = api.forgotPassword(ForgotPasswordRequest(email))
-        UiState.Success(response.message ?: response.detail ?: "Mã OTP đã được gửi")
+        UiState.Success(response.message ?: response.detail ?: "Link đặt lại mật khẩu đã được gửi đến email của bạn")
     } catch (e: Exception) {
-        UiState.Error(e.message ?: "Không thể gửi OTP")
+        UiState.Error(e.message ?: "Không thể gửi email đặt lại mật khẩu")
     }
 
-    suspend fun verifyOtp(email: String, otp: String): UiState<String> = try {
-        val response = api.verifyOtp(VerifyOtpRequest(email, otp))
-        UiState.Success(response.message ?: response.detail ?: "Xác thực thành công")
-    } catch (e: Exception) {
-        UiState.Error(e.message ?: "Mã OTP không hợp lệ")
-    }
-
-    suspend fun resetPassword(email: String, otp: String, newPassword: String): UiState<String> = try {
-        val response = api.resetPassword(ResetPasswordRequest(email, otp, newPassword))
+    suspend fun resetPassword(token: String, newPassword: String): UiState<String> = try {
+        val response = api.resetPassword(ResetPasswordRequest(token, newPassword))
         UiState.Success(response.message ?: response.detail ?: "Đặt lại mật khẩu thành công")
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Không thể đặt lại mật khẩu")

@@ -25,12 +25,9 @@ interface AuthApiService {
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body body: RefreshTokenRequest): TokenResponse
 
-    @POST("api/v1/auth/forgot_password/")
+    @POST("api/v1/auth/forgot-password")
     suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
 
-    @POST("api/v1/auth/verify_otp/")
-    suspend fun verifyOtp(@Body body: VerifyOtpRequest): MessageResponse
-
-    @POST("api/v1/auth/reset_password/")
+    @POST("api/v1/auth/reset-password")
     suspend fun resetPassword(@Body body: ResetPasswordRequest): MessageResponse
 }

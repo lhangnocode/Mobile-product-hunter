@@ -45,7 +45,8 @@ fun AuthGateScreen(
         when (sessionState) {
             is UiState.Success -> {
                 val hasSession = (sessionState as UiState.Success<Boolean>).data
-                navController.navigate(if (hasSession) Route.HOME else Route.LOGIN) {
+                // Navigate to SEARCH as it is the default tab now
+                navController.navigate(if (hasSession) Route.SEARCH else Route.LOGIN) {
                     popUpTo(Route.AUTH_GATE) { inclusive = true }
                     launchSingleTop = true
                 }

@@ -5,17 +5,21 @@ object Route {
     const val LOGIN = "login"
     const val SIGNUP = "signup"
     const val FORGOT_PASSWORD = "forgot_password"
-    const val VERIFY_OTP = "verify_otp"
     const val RESET_PASSWORD = "reset_password"
     
-    const val HOME = "home"
+    // Main Tabs
+    const val FEED = "feed"
     const val SEARCH = "search"
-    const val TRENDING = "trending"
     const val WISHLIST = "wishlist"
-    const val ALERTS = "alerts"
-    const val PROFILE = "profile"
-    const val SMART = "smart"
-    const val ACCOUNT = "account"
     
+    // Other Screens
+    const val PROFILE = "profile"
+    const val SEARCH_HISTORY = "search_history"
+    const val SETTINGS = "settings"
+    const val ALERTS = "alerts"
+    
+    // Legacy/Removed navigation to Detail (keeping for now to avoid breaking refs until replaced by chat cards)
     const val PRODUCT_DETAIL = "product_detail"
+
+    const val APP_INFORMATION = "app_information"
 }

@@ -5,14 +5,22 @@ import androidx.compose.ui.graphics.Color
 // ProductHunter Colors
 val PH_Primary = Color(0xFFFF8A50)
 val PH_Background = Color(0xFFFFF8F1)
-val PH_Background_Dark = Color(0xFF0F0F0F)
+val PH_Background_Dark = Color(0xFF0B1120) // Deep navy background from the image
 val PH_Surface = Color(0xFFFFFFFF)
-val PH_Surface_Dark = Color(0xFF1E1E1E)
+val PH_Surface_Dark = Color(0xFF1E293B) // Slightly lighter navy for cards/surfaces
+
 val PH_OnBackground = Color(0xFF2D2D2D)
 val PH_OnSurface = Color(0xFF2D2D2D)
 
+// Gradients for heading text (Matches Image UI)
+val GreetingGradient = listOf(
+    Color(0xFFF9A8D4), // Pink
+    Color(0xFFD8B4FE), // Lavender
+    Color(0xFF818CF8)  // Indigo
+)
+
 val PH_Price_Current = Color(0xFF2D2D2D)
-val PH_Price_Target = Color(0xFFD35400)
+val PH_Price_Target = Color(0xFFFF8A50)
 
 val PH_Status_Success_Bg = Color(0xFFE8F5E9)
 val PH_Status_Success_Text = Color(0xFF4CAF50)

@@ -22,9 +22,13 @@ class ThemeViewModel @Inject constructor(
         initialValue = ThemeMode.SYSTEM,
     )
 
-    fun setDarkMode(enabled: Boolean) {
+    fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
-            themePreferences.setThemeMode(if (enabled) ThemeMode.DARK else ThemeMode.LIGHT)
+            themePreferences.setThemeMode(mode)
         }
+    }
+
+    fun setDarkMode(enabled: Boolean) {
+        setThemeMode(if (enabled) ThemeMode.DARK else ThemeMode.LIGHT)
     }
 }
