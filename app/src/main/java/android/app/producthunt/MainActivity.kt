@@ -117,6 +117,10 @@ class MainActivity : ComponentActivity() {
                                 onManageAccount = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.PROFILE)
+                                },
+                                onAppInformation = {
+                                    scope.launch { drawerState.close() }
+                                    navController.navigate(Route.APP_INFORMATION)
                                 }
                             )
                         }
@@ -181,8 +185,11 @@ fun AppDrawerContent(
     onThemeChange: (ThemeMode) -> Unit,
     onNewSearch: () -> Unit,
     onHistoryClick: () -> Unit,
-    onManageAccount: () -> Unit
+    onManageAccount: () -> Unit,
+    onAppInformation: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -248,7 +255,7 @@ fun AppDrawerContent(
         NavigationDrawerItem(
             label = { Text("App Information") },
             selected = false,
-            onClick = { /* About */ },
+            onClick = { onAppInformation() },
             icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
             shape = RoundedCornerShape(12.dp)
         )
@@ -346,6 +353,10 @@ private fun String?.toChromeConfig(): ChromeConfig =
         Route.PRODUCT_DETAIL -> ChromeConfig(
             topBar = TopBarType.Child,
             title = "Details",
+        )
+        Route.APP_INFORMATION -> ChromeConfig(
+            topBar = TopBarType.Child,
+            title = "App Information",
         )
         else -> ChromeConfig()
     }

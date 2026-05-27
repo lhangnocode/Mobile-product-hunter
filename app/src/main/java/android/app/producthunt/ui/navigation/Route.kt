@@ -20,4 +20,6 @@ object Route {
     
     // Legacy/Removed navigation to Detail (keeping for now to avoid breaking refs until replaced by chat cards)
     const val PRODUCT_DETAIL = "product_detail"
+
+    const val APP_INFORMATION = "app_information"
 }
