@@ -4,6 +4,7 @@ import android.app.producthunt.ui.screens.*
 import android.app.producthunt.ui.screens.main.*
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
@@ -161,6 +162,10 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
             ResetPasswordScreen(navController = navController, token = token)
+        }
+
+        composable(Route.APP_INFORMATION) {
+            AppInformationScreen(modifier = Modifier.fillMaxSize())
         }
     }
 }
