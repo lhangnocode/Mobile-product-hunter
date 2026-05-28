@@ -4,7 +4,7 @@ import android.app.producthunt.data.local.TokenDataStore
 import android.app.producthunt.data.remote.ApiErrorParser
 import android.app.producthunt.data.remote.api.AuthApiService
 import android.app.producthunt.data.remote.dto.*
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import javax.inject.Inject
 
 class AuthRepository @Inject constructor(

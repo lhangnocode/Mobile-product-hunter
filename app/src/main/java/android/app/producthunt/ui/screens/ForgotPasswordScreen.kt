@@ -1,6 +1,6 @@
 package android.app.producthunt.ui.screens
 
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.layout.*
@@ -17,7 +17,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
 
 @Composable
 fun ForgotPasswordScreen(

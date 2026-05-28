@@ -1,7 +1,7 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.data.remote.dto.ProductResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.components.card.ProductGridCard
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp

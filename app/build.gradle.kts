@@ -91,4 +91,6 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.coil.compose)
+
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 }

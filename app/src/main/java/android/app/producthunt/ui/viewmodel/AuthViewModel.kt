@@ -4,7 +4,7 @@ import android.app.producthunt.data.remote.dto.UserResponse
 import android.app.producthunt.data.repository.AuthRepository
 import android.app.producthunt.data.repository.PriceAlertRepository
 import android.app.producthunt.data.repository.WishlistRepository
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -179,6 +179,5 @@ class AuthViewModel @Inject constructor(
     private fun clearUserScopedState() {
         _currentUserState.value = UiState.Idle
         wishlistRepository.clear()
-        priceAlertRepository.clear()
     }
 }
