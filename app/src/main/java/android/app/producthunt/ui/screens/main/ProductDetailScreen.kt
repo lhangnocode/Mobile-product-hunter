@@ -4,7 +4,7 @@ import android.app.producthunt.R
 import android.app.producthunt.data.remote.dto.PlatformListingDto
 import android.app.producthunt.data.remote.dto.PriceAnalysisResponse
 import android.app.producthunt.data.remote.dto.PriceRecordResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.ProductDetailViewModel
 import androidx.compose.foundation.*

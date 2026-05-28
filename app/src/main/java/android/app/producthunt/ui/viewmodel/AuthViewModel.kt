@@ -179,5 +179,6 @@ class AuthViewModel @Inject constructor(
     private fun clearUserScopedState() {
         _currentUserState.value = UiState.Idle
         wishlistRepository.clear()
+        priceAlertRepository.clear()
     }
 }

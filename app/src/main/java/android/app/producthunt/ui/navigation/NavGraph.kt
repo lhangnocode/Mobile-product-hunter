@@ -180,6 +180,10 @@ fun AppNavGraph(
         composable(Route.APP_INFORMATION) {
             AppInformationScreen(modifier = Modifier.fillMaxSize())
         }
+
+        composable(Route.AGENT_MANAGEMENT) {
+            AgentManagementScreen()
+        }
     }
 }
 

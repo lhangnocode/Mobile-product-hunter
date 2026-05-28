@@ -1,20 +1,13 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
-import android.app.producthunt.ui.theme.ColorBorder
-import android.app.producthunt.ui.theme.ColorDivider
-import android.app.producthunt.ui.theme.ColorOrange
-import android.app.producthunt.ui.theme.ColorSurface
-import android.app.producthunt.ui.theme.ColorText
-import android.app.producthunt.ui.theme.ColorTextSub
 import android.app.producthunt.ui.theme.PHSpacing
-import android.app.producthunt.ui.theme.ColorTrackBg
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

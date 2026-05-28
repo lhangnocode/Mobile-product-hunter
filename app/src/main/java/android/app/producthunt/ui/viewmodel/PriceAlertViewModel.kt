@@ -3,7 +3,7 @@ package android.app.producthunt.ui.viewmodel
 import android.app.producthunt.data.remote.dto.PriceAlertResponse
 import android.app.producthunt.data.remote.dto.TriggerAlertResponse
 import android.app.producthunt.data.repository.PriceAlertRepository
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel

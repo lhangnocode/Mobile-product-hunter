@@ -1,6 +1,6 @@
 package android.app.producthunt.ui.screens
 
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.clickable

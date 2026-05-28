@@ -1,7 +1,9 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.PriceAlertResponse
+import android.app.producthunt.data.remote.dto.WishlistResponse
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.navigation.Route
@@ -120,7 +122,7 @@ fun WishlistScreen(
 
 @Composable
 private fun SavedProductsContent(
-    state: UiState<List<android.app.producthunt.data.remote.dto.WishlistResponse>>,
+    state: UiState<List<WishlistResponse>>,
     navController: NavController,
     viewModel: WishlistViewModel
 ) {
@@ -232,7 +234,7 @@ fun WishlistProductCard(
 
 @Composable
 private fun PriceAlertsContent(
-    state: UiState<List<android.app.producthunt.data.remote.dto.PriceAlertResponse>>,
+    state: UiState<List<PriceAlertResponse>>,
 ) {
     when (state) {
         is UiState.Loading, UiState.Idle -> {

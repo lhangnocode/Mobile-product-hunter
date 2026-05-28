@@ -3,7 +3,7 @@ package android.app.producthunt.data.repository
 import android.app.producthunt.data.remote.api.PriceRecordApiService
 import android.app.producthunt.data.remote.dto.PriceAnalysisResponse
 import android.app.producthunt.data.remote.dto.PriceRecordResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import javax.inject.Inject
 
 class PriceRecordRepository @Inject constructor(

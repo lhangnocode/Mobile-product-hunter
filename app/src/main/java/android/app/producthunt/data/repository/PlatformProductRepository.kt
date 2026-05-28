@@ -3,7 +3,7 @@ package android.app.producthunt.data.repository
 import android.app.producthunt.data.remote.api.PlatformProductApiService
 import android.app.producthunt.data.remote.dto.PlatformListingDto
 import android.app.producthunt.data.remote.dto.TrendingDealResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import javax.inject.Inject
 
 class PlatformProductRepository @Inject constructor(

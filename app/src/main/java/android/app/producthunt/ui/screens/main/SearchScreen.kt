@@ -2,7 +2,7 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.data.remote.dto.ProductResponse
 import android.app.producthunt.data.remote.dto.UserResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.components.SearchModeSwitch
 import android.app.producthunt.ui.components.UserAvatar
 import android.app.producthunt.ui.navigation.Route

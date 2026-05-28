@@ -3,7 +3,7 @@ package android.app.producthunt.data.repository
 import android.app.producthunt.data.remote.api.WishlistApiService
 import android.app.producthunt.data.remote.dto.WishListCreate
 import android.app.producthunt.data.remote.dto.WishlistResponse
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken

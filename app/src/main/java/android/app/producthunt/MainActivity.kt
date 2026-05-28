@@ -9,8 +9,7 @@ import android.app.producthunt.ui.components.appbar.ProductHunterMainTopAppBar
 import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
-import android.app.producthunt.domain.UiState
-import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
@@ -122,6 +121,10 @@ class MainActivity : ComponentActivity() {
                                 onAppInformation = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.APP_INFORMATION)
+                                },
+                                onAgentManagement = {
+                                    scope.launch { drawerState.close() }
+                                    navController.navigate(Route.AGENT_MANAGEMENT)
                                 }
                             )
                         }
@@ -190,6 +193,7 @@ fun AppDrawerContent(
     onHistoryClick: () -> Unit,
     onManageAccount: () -> Unit,
     onAppInformation: () -> Unit,
+    onAgentManagement: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -231,6 +235,18 @@ fun AppDrawerContent(
                 shape = RoundedCornerShape(12.dp)
             )
         }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
+
+        Text("Agent", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+
+        NavigationDrawerItem(
+            label = { Text("AI Agent") },
+            selected = false,
+            onClick = onAgentManagement,
+            icon = { CustomIcon(Icons.Default.AutoAwesome, contentDescription = null) },
+            shape = RoundedCornerShape(12.dp)
+        )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
 
@@ -369,6 +385,10 @@ private fun String?.toChromeConfig(): ChromeConfig =
         Route.APP_INFORMATION -> ChromeConfig(
             topBar = TopBarType.Child,
             title = "App Information",
+        )
+        Route.AGENT_MANAGEMENT -> ChromeConfig(
+            topBar = TopBarType.Child,
+            title = "AI Agent",
         )
         else -> ChromeConfig()
     }
