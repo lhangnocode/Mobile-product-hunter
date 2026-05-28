@@ -5,6 +5,7 @@ import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,23 +37,33 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 @Composable
-fun AlertCard(alert: PriceAlert) {
-    val distancePct = ((alert.currentPrice - alert.targetPrice) / alert.targetPrice * 100).toInt()
-    val progress = ((alert.currentPrice - alert.targetPrice) / alert.currentPrice)
+fun AlertCard(
+    alert: PriceAlert,
+    onDeleteClick: () -> Unit = {},
+    onClick: () -> Unit = {},
+) {
+    val currentPrice = alert.currentPrice
+    val progress = if (currentPrice != null && currentPrice > 0.0) {
+        ((currentPrice - alert.targetPrice) / currentPrice)
+    } else {
+        0.0
+    }
         .toFloat()
         .coerceIn(0f, 1f)
-    val isNearTarget = distancePct <= 15
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
@@ -64,7 +74,8 @@ fun AlertCard(alert: PriceAlert) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ProductPlaceholder(
+                ProductVisual(
+                    imageUrl = alert.imageUrl,
                     color = alert.placeholderColor,
                     icon = alert.placeholderIcon,
                 )
@@ -83,18 +94,7 @@ fun AlertCard(alert: PriceAlert) {
                     )
                 }
                 IconButton(
-                    onClick = {},
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Edit,
-                        contentDescription = "Edit",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-                IconButton(
-                    onClick = {},
+                    onClick = onDeleteClick,
                     modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
@@ -113,7 +113,7 @@ fun AlertCard(alert: PriceAlert) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                PriceColumn(label = "CURRENT", price = alert.currentPrice, highlight = false)
+                PriceColumn(label = "CURRENT", price = currentPrice, highlight = false)
                 PriceColumn(label = "TARGET", price = alert.targetPrice, highlight = true)
             }
 
@@ -124,25 +124,18 @@ fun AlertCard(alert: PriceAlert) {
 
             Spacer(Modifier.height(8.dp))
 
-            // Status
-            val statusColor = if (isNearTarget) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
-            val statusText = if (isNearTarget)
-                "↗ Near target (${distancePct}% remaining)"
-            else
-                "↗ ${distancePct}% away from target price"
-
             Text(
-                text = statusText,
+                text = alert.statusText,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = statusColor,
+                color = if (alert.targetReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
             )
         }
     }
 }
 
 @Composable
-private fun ProductPlaceholder(color: Color, icon: ImageVector) {
+private fun ProductVisual(imageUrl: String?, color: Color, icon: ImageVector) {
     Box(
         modifier = Modifier
             .size(64.dp)
@@ -151,18 +144,27 @@ private fun ProductPlaceholder(color: Color, icon: ImageVector) {
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        val iconTint = if (color == Color(0xFF1E1E2E)) Color.White else Color(0xFF555555)
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(28.dp),
-        )
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            val iconTint = if (color == Color(0xFF1E1E2E)) Color.White else Color(0xFF555555)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(28.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun PriceColumn(label: String, price: Double, highlight: Boolean) {
+private fun PriceColumn(label: String, price: Double?, highlight: Boolean) {
     Column {
         Text(
             text = label,
@@ -173,7 +175,7 @@ private fun PriceColumn(label: String, price: Double, highlight: Boolean) {
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            text = "$${"%.2f".format(price)}",
+            text = price?.let { "%,.0f đ".format(it) } ?: "Checking",
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -220,8 +222,11 @@ fun ProductAlertCardPreview() {
                     id = 1,
                     name = "Sony WH-1000XM5",
                     subtitle = "Headphones",
+                    imageUrl = null,
                     currentPrice = 348.00,
                     targetPrice = 299.0,
+                    statusText = "Waiting for price drop",
+                    targetReached = false,
                     placeholderColor = Color(0xFF1E1E2E),
                     placeholderIcon = Icons.Outlined.Headphones,
                 ),

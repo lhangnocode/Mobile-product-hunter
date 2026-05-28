@@ -50,6 +50,10 @@ class WishlistRepository @Inject constructor(
         UiState.Error(e.message ?: "Failed to remove from wishlist")
     }
 
+    fun clear() {
+        _wishlist.value = UiState.Idle
+    }
+
     private val wishlistListType = object : TypeToken<List<WishlistResponse>>() {}.type
 
     private fun JsonElement.toWishlistList(): List<WishlistResponse> {

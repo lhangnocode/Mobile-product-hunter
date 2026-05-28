@@ -1,29 +1,29 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.R
+import android.app.producthunt.domain.UiState
+import android.app.producthunt.ui.components.UserAvatar
 import android.app.producthunt.ui.navigation.Route
-import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.AuthViewModel
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +37,14 @@ fun ProfileScreen(
     viewModel: AuthViewModel = hiltViewModel(),
 ) {
     val scrollState = rememberScrollState()
+    val currentUserState by viewModel.currentUserState.collectAsState()
+    val currentUser = (currentUserState as? UiState.Success)?.data
+
+    LaunchedEffect(currentUserState) {
+        if (currentUserState == UiState.Idle) {
+            viewModel.loadCurrentUser()
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -53,30 +61,23 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             Box(contentAlignment = Alignment.Center) {
-                Surface(
-                    modifier = Modifier.size(100.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                UserAvatar(
+                    name = currentUser?.fullName,
+                    email = currentUser?.email,
+                    size = 100.dp,
+                )
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Nguyễn Văn Thắng",
+                text = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: "Product Hunter User",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
-                text = "thangnguyen@gmail.com",
+                text = currentUser?.email ?: "Loading account...",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -88,7 +89,7 @@ fun ProfileScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = "Free Plan",
+                    text = currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
@@ -118,13 +119,13 @@ fun ProfileScreen(
             )
             
             ProfileMenuItem(
-                icon = Icons.Default.HelpOutline,
+                icon = Icons.AutoMirrored.Filled.HelpOutline,
                 title = "Help & Support",
                 onClick = { /* Navigate to Support */ }
             )
             
             ProfileMenuItem(
-                icon = Icons.Default.Logout,
+                icon = Icons.AutoMirrored.Filled.Logout,
                 title = "Log Out",
                 textColor = MaterialTheme.colorScheme.error,
                 showArrow = false,

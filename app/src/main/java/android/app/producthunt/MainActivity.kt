@@ -1,6 +1,8 @@
 package android.app.producthunt
 
 import android.app.producthunt.data.local.ThemeMode
+import android.app.producthunt.data.remote.dto.UserResponse
+import android.app.producthunt.ui.components.UserAvatar
 import android.app.producthunt.ui.components.appbar.MainNavBar
 import android.app.producthunt.ui.components.appbar.ProductHunterChildTopAppBar
 import android.app.producthunt.ui.components.appbar.ProductHunterMainTopAppBar
@@ -19,13 +21,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
@@ -39,10 +38,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +72,8 @@ class MainActivity : ComponentActivity() {
 
             AndroidAppProductHuntTheme(darkTheme = darkTheme) {
                 val startupState by authViewModel.startupState.collectAsState()
+                val currentUserState by authViewModel.currentUserState.collectAsState()
+                val currentUser = (currentUserState as? UiState.Success)?.data
 
                 LaunchedEffect(Unit) {
                     authViewModel.restoreSession()
@@ -106,6 +105,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppDrawerContent(
                                 themeMode = themeMode,
+                                currentUser = currentUser,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
                                 onNewSearch = {
                                     scope.launch { drawerState.close() }
@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
                     ) { innerPadding ->
                         AppNavGraph(
                             navController = navController,
+                            authViewModel = authViewModel,
                             modifier = Modifier.padding(innerPadding),
                             startDestination = startDestination,
                         )
@@ -183,14 +184,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppDrawerContent(
     themeMode: ThemeMode,
+    currentUser: UserResponse?,
     onThemeChange: (ThemeMode) -> Unit,
     onNewSearch: () -> Unit,
     onHistoryClick: () -> Unit,
     onManageAccount: () -> Unit,
     onAppInformation: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -274,19 +274,25 @@ fun AppDrawerContent(
                 modifier = Modifier.padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = "User Avatar",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray),
-                    contentScale = ContentScale.Crop
+                UserAvatar(
+                    name = currentUser?.fullName,
+                    email = currentUser?.email,
+                    size = 40.dp,
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Nguyễn Văn Thắng", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text("Free Plan", style = MaterialTheme.typography.labelSmall, color = PH_Primary)
+                    Text(
+                        currentUser?.fullName?.takeIf { it.isNotBlank() } ?: currentUser?.email ?: "Product Hunter User",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PH_Primary,
+                    )
                 }
                 CustomIcon(Icons.Default.Settings, contentDescription = null, size = 18.dp)
             }
@@ -341,6 +347,11 @@ private fun String?.toChromeConfig(): ChromeConfig =
         Route.WISHLIST -> ChromeConfig(
             topBar = TopBarType.Main,
             title = "Wishlist",
+            showBottomBar = true,
+        )
+        Route.ALERTS -> ChromeConfig(
+            topBar = TopBarType.Main,
+            title = "Price Alerts",
             showBottomBar = true,
         )
         Route.PROFILE -> ChromeConfig(

@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.domain.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
@@ -58,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,7 +155,14 @@ private fun SavedProductsContent(
                             currentPrice = item.currentPrice?.let { "%,.0f đ".format(it) } ?: "Tracking",
                             imageUrl = image,
                             onProductClick = {
-                                navController.navigate("${Route.SEARCH}?q=$name")
+                                val encodedImage = image?.let {
+                                    URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
+                                }
+                                val route = buildString {
+                                    append("${Route.PRODUCT_DETAIL}/${item.productId}")
+                                    if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                }
+                                navController.navigate(route)
                             },
                             onRemoveClick = { viewModel.remove(item.productId) }
                         )
@@ -237,12 +247,18 @@ private fun PriceAlertsContent(
         }
         is UiState.Success -> {
             val alerts = state.data.mapIndexed { index, dto ->
+                val currentPrice = PriceAlertStatusMapper.displayCurrentPrice(dto)
+                val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
                 PriceAlert(
                     id = index,
-                    name = dto.product?.productName ?: dto.productId,
-                    subtitle = dto.product?.category ?: "",
-                    currentPrice = 0.0,
+                    name = dto.product?.productName ?: dto.productName ?: "Tracked product",
+                    subtitle = listOfNotNull(dto.product?.brand, dto.product?.category).joinToString(" • ")
+                        .ifBlank { "Product ${dto.productId.take(8)}" },
+                    imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
+                    currentPrice = currentPrice,
                     targetPrice = dto.targetPrice,
+                    statusText = PriceAlertStatusMapper.statusText(dto),
+                    targetReached = targetReached,
                     placeholderColor = Color(0xFF1E1E2E),
                     placeholderIcon = Icons.Filled.Headphones,
                 )

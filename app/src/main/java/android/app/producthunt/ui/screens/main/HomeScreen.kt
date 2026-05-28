@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun HomeScreen(
@@ -47,8 +49,16 @@ fun HomeScreen(
                 ProductListSection(
                     productsState = productsState,
                     onProductClick = { product ->
-                        // Navigate to Search chat with the product name to show details in conversational UI
-                        navController.navigate("${Route.SEARCH}?q=${product.productName}")
+                        product.id?.let { id ->
+                            val encodedImage = product.mainImageUrl?.let {
+                                URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
+                            }
+                            val route = buildString {
+                                append("${Route.PRODUCT_DETAIL}/$id")
+                                if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                            }
+                            navController.navigate(route)
+                        }
                     }
                 )
             }

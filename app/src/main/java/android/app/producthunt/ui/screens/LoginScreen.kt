@@ -57,7 +57,7 @@ fun LoginScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel(),
 ) {
-    var emailOrUsername by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -112,11 +112,12 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
-                    value = emailOrUsername,
-                    onValueChange = { emailOrUsername = it },
-                    label = { Text("Email hoặc Username") },
-                    placeholder = { Text("Nhập tài khoản của bạn") },
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    placeholder = { Text("Nhập email của bạn") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -162,8 +163,8 @@ fun LoginScreen(
                 }
 
                 Button(
-                    onClick = { viewModel.login(emailOrUsername, password) },
-                    enabled = emailOrUsername.isNotEmpty() && password.length >= 6 
+                    onClick = { viewModel.login(email, password) },
+                    enabled = email.isNotBlank() && password.length >= 6 
                             && loginState !is UiState.Loading,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
