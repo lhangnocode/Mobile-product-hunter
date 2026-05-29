@@ -42,7 +42,7 @@ class LlmRuntime(
         return isDownloaded
     }
 
-    suspend fun `init`(): Result<Unit> = mutex.withLock {
+    suspend fun init(): Result<Unit> = mutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
                 if (engine?.isInitialized() == true) {
@@ -65,8 +65,6 @@ class LlmRuntime(
                     backend = Backend.GPU(),
                     visionBackend = Backend.CPU(),
                     audioBackend = Backend.CPU(),
-                    maxNumTokens = null,
-                    maxNumImages = null,
                     cacheDir = cacheDir.absolutePath,
                 )
 
@@ -103,12 +101,50 @@ class LlmRuntime(
         var latestText = ""
         try {
             activeConversation.sendMessageAsync(contents).collect { response ->
-                latestText = response.extractText()
-                emit(LlmChatEvent.Message(latestText))
+                response.extractToolResponses().forEach { toolEvent ->
+                    emit(toolEvent)
+                }
+                latestText = mergeStreamText(latestText, response.extractText())
+                if (latestText.isNotEmpty()) {
+                    emit(LlmChatEvent.Message(latestText))
+                }
             }
             emit(LlmChatEvent.Completed(latestText))
         } catch (e: Exception) {
             ILog.e(TAG, "sendMessage", "failed", throwable = e)
+            emit(LlmChatEvent.Failed(e.message ?: "LLM message failed", e))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    fun sendMessageFinal(contents: Contents): Flow<LlmChatEvent> = flow {
+        emit(LlmChatEvent.Started)
+
+        val activeConversation = mutex.withLock {
+            conversation ?: error("No active LLM conversation")
+        }
+
+        try {
+            val response = activeConversation.sendMessage(contents)
+            if (response.toolCalls.isNotEmpty()) {
+                ILog.w(
+                    TAG,
+                    "sendMessageFinal",
+                    "model returned tool calls to app",
+                    "count=${response.toolCalls.size}",
+                )
+            }
+
+            response.extractToolResponses().forEach { toolEvent ->
+                emit(toolEvent)
+            }
+
+            val text = response.extractText()
+            if (text.isNotBlank()) {
+                emit(LlmChatEvent.Message(text))
+            }
+            emit(LlmChatEvent.Completed(text))
+        } catch (e: Exception) {
+            ILog.e(TAG, "sendMessageFinal", "failed", throwable = e)
             emit(LlmChatEvent.Failed(e.message ?: "LLM message failed", e))
         }
     }.flowOn(Dispatchers.IO)
@@ -138,4 +174,25 @@ class LlmRuntime(
         contents.contents
             .filterIsInstance<Content.Text>()
             .joinToString(separator = "") { it.text }
+
+    private fun mergeStreamText(current: String, incoming: String): String =
+        when {
+            incoming.isEmpty() -> current
+            incoming.startsWith(current) -> incoming
+            else -> current + incoming
+        }
+
+    private fun Message.extractToolResponses(): List<LlmChatEvent.ToolResponse> {
+        val toolResponses = contents.contents.filterIsInstance<Content.ToolResponse>()
+        if (toolResponses.isEmpty()) return emptyList()
+
+        return toolResponses.map { response ->
+            val payload = when (val toolPayload = response.response) {
+                is String -> toolPayload
+                else -> com.google.gson.Gson().toJson(toolPayload)
+            }
+            ILog.d(TAG, "extractToolResponses", "name=${response.name}", "payloadLength=${payload.length}")
+            LlmChatEvent.ToolResponse(response.name, payload)
+        }
+    }
 }
