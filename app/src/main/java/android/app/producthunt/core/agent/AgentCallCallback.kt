@@ -3,6 +3,7 @@ package android.app.producthunt.core.agent
 interface AgentCallCallback {
     fun onConversationReady(conversationId: String) = Unit
     fun onStarted() = Unit
+    fun onToolStarted(name: String, input: String) = Unit
     fun onMessage(text: String) = Unit
     fun onToolResponse(name: String, payload: String) = Unit
     fun onCompleted(text: String) = Unit

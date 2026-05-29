@@ -1,6 +1,5 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.core.agent.AgentCompareItemSummary
 import android.app.producthunt.core.agent.AgentProductSummary
 import android.app.producthunt.core.agent.AgentTrendingItemSummary
 import android.app.producthunt.core.state.UiState
@@ -214,7 +213,6 @@ data class ChatMessage(
     val compareItems: List<android.app.producthunt.data.remote.dto.SearchCompareItem> = emptyList(),
     val trendingItems: List<android.app.producthunt.data.remote.dto.TrendingDealResponse> = emptyList(),
     val agentProductList: List<AgentProductSummary> = emptyList(),
-    val agentCompareItems: List<AgentCompareItemSummary> = emptyList(),
     val agentTrendingItems: List<AgentTrendingItemSummary> = emptyList(),
     val showAgentHeader: Boolean = true
 )
@@ -314,7 +312,6 @@ fun ConversationArea(
     ) {
         items(messages) { message ->
             when {
-                message.agentCompareItems.isNotEmpty() -> AgentCompareSummaryMessage(message)
                 message.agentTrendingItems.isNotEmpty() -> AgentTrendingSummaryMessage(message)
                 message.agentProductList.isNotEmpty() -> AgentProductSummaryListMessage(message, onAgentProductClick)
                 message.compareItems.isNotEmpty() -> AgentCompareMessage(message)
@@ -386,56 +383,6 @@ fun AgentProductSummaryListMessage(
                             )
                         }
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AgentCompareSummaryMessage(message: ChatMessage) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (message.showAgentHeader) AgentHeader()
-        val title = if (message.text.isNotBlank()) message.text else "So sánh ${message.agentCompareItems.size} sản phẩm"
-        Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
-        Spacer(Modifier.height(12.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            message.agentCompareItems.forEach { item ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AgentSummaryImage(item.mainImageUrl)
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.productName,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "${item.platformCount} nền tảng",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
-                        }
-                        item.lowestPrice?.let { price ->
-                            Text(
-                                text = price.toString(),
-                                color = PH_Primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        }
                     }
                 }
             }
@@ -518,7 +465,7 @@ fun ChatBubble(message: ChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (message.isUser) Alignment.End else Alignment.Start
     ) {
-        if (!message.isUser && !message.isLoading && message.showAgentHeader) {
+        if (!message.isUser && message.showAgentHeader) {
             AgentHeader()
         }
         
@@ -533,7 +480,22 @@ fun ChatBubble(message: ChatMessage) {
         ) {
             Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 if (message.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PH_Primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PH_Primary,
+                        )
+                        if (message.text.isNotBlank()) {
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = message.text,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                            )
+                        }
+                    }
                 } else {
                     Text(
                         text = message.text,

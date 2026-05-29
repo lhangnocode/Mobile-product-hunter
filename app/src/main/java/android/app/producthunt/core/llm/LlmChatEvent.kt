@@ -10,8 +10,3 @@ sealed interface LlmChatEvent {
         val cause: Throwable? = null,
     ) : LlmChatEvent
 }
-
-data class LlmToolResponse(
-    val name: String,
-    val payload: String,
-)

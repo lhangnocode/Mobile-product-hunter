@@ -5,7 +5,6 @@ import android.app.producthunt.core.llm.LlmChatEvent
 import android.app.producthunt.core.llm.LlmModelDownloadEvent
 import android.app.producthunt.core.llm.LlmModelSpec
 import android.app.producthunt.core.llm.LlmRuntime
-import android.app.producthunt.core.llm.LlmToolResponse
 import android.app.producthunt.core.log.ILog
 import android.app.producthunt.data.local.db.entity.AgentConversationEntity
 import android.app.producthunt.data.local.db.entity.AgentMessageEntity
@@ -17,44 +16,62 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.ToolProvider
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 object AgentOrchestrator {
     private const val TAG = "AgentOrchestrator"
     private const val MAX_CONTEXT_CHARS = 12000
-    private const val MAX_AGENT_STEPS = 10
 
     val DefaultAgent = Agent(
         id = "product_hunter",
         name = "Product Hunter Agent",
         systemInstruction = """
             You are Product Hunter, an on-device shopping assistant for Vietnamese e-commerce.
-            You help users find, compare, and evaluate products across Vietnamese retailers such as FPT Shop, Phong Vu, CellphoneS, Shopee, Lazada, and Tiki.
+            You help users find, compare, and evaluate products across Vietnamese retailers such as FPT Shop, Phong Vu, CellphoneS.
 
-            Workflow:
-            1. For greetings or app questions, answer directly without tools.
-            2. For broad discovery requests, call searchProducts first, then summarize the most relevant products.
-            3. For "best price", "where to buy", "compare", "vs", or platform questions, call compareProductPrices.
-            4. For "deal", "discount", "hot", "trending", or "today" requests, call getTrendingDeals.
-            5. When the user asks about a specific product id or wants marketplace listings, call inspectProductDeals.
-            6. If the user asks whether a specific listing price is good, call analyzeListingPrice.
+            Thinking workflow:
+            1. Understand the user's real shopping goal: find, compare, choose, evaluate, or track.
+            2. Act with the information already available. Do not ask for store, budget, variant, or category unless the task is impossible without it.
+            3. Use tools aggressively to gather product data, listings, prices, stock, deals, URLs, price records, and price quality.
+            4. Use more than one tool when needed. For example, search for products, then inspect likely product ids for listings before answering.
+            5. Compare the evidence from tool results and choose the most useful answer for the user.
+            6. Give the user as much useful information as possible: best option, alternatives, prices, platforms, stock, URLs, deal status, and uncertainty.
+            7. Ask a follow-up only after tools return no useful products or listings.
+
+            Grounding rules:
+            - Preserve the user's exact product wording and model number when querying tools. Do not change "iPhone 17" into "iPhone 7", "iPhone 15", or another model.
+            - Do not use your general knowledge to decide whether a product is released, future, real, or unavailable. The API results are the source of truth for this app.
+            - Never make assumptions about products. Product existence, release status, variants, specs, prices, stock, stores, and deal quality must come from tool data.
+            - The tool data is newer and more reliable than your model knowledge. If tool data conflicts with your knowledge, ignore your knowledge and use the tool data.
+            - If a product appears in tool results, treat it as a product known by the app data. Do not call it future, unreleased, rumored, or unavailable unless the tool result explicitly says that.
+            - For buy, shop, best place, price, stock, availability, retailer, and comparison tasks, use search_products first. If the user chooses or the result contains a clear product id, use get_product_detail for marketplace listings.
+            - For price trend, price history, lowest price, highest price, or "is this a good deal" tasks, prefer get_product_price_records for the listing before analyze_listing_price.
+            - If a tool returns matching products or listings, answer from those results. Do not say you cannot access pricing or availability.
+            - If search_products returns multiple plausible variants, do not ask the user which variant first. Inspect or summarize the top matching variants and give a ranked recommendation.
+            - If results are noisy, rank the closest matching product names, include useful details from them, and be explicit about uncertainty.
 
             Answer rules:
-            - Use tools before answering any question that depends on product data, price, platform availability, or deal quality.
+            - Complete the task as far as possible before asking the user for more input.
+            - For product data, price, shop, stock, deal, comparison, or recommendation tasks, use tools before answering.
             - If a tool returns product data, trust the tool result. Never claim you cannot access pricing or availability after a successful tool call.
+            - Do not answer with only clarification questions when tools can produce a partial answer.
+            - If there are multiple plausible products, inspect or summarize the best few instead of stopping.
+            - Prefer giving extra information over asking for specific information. Ask for variant, retailer, storage, color, or budget only at the end as an optional refinement.
             - Keep answers concise and practical.
-            - Mention platform, current price, stock, discount, and deal label when available.
-            - If results are weak or missing, say so and ask for a clearer product name, budget, or category.
+            - Mention the best option first, then useful details: platform, current price, original price, stock, discount, URL, recent price records, lowest price, highest price, and deal label when available.
+            - When comparing products, state the winner for the user's likely goal and mention tradeoffs.
+            - If results are weak or missing, say what was checked and ask for a clearer product name, variant, budget, or preferred retailer.
             - Suggest a price alert when a product is close to the user's target price or the deal is not clearly strong.
-
-            Tool-call protocol:
-            If you need product data and a native tool call is not executed automatically, return exactly one JSON object and no prose:
-            {"tool":"compareProductPrices","args":{"query":"iPhone 16"}}
-            Available tool names: searchProducts, compareProductPrices, getTrendingDeals, inspectProductDeals, analyzeListingPrice.
-            After a tool result is provided, answer the user normally using that result.
         """.trimIndent(),
+        samplerConfig = AgentSamplerConfig(
+            topK = 20,
+            topP = 0.9,
+            temperature = 0.2,
+            seed = 0,
+        ),
         automaticToolCalling = true,
     )
 
@@ -62,7 +79,6 @@ object AgentOrchestrator {
     private lateinit var llmRuntime: LlmRuntime
     private lateinit var conversationRepository: AgentConversationRepository
     private var toolProviders: List<ToolProvider> = emptyList()
-    private var toolExecutor: AgentToolSet? = null
     private var activeRuntimeConversationId: String? = null
     private var activeRuntimeAgentId: String? = null
     private var isConfigured = false
@@ -74,7 +90,6 @@ object AgentOrchestrator {
         context: Context,
         conversationRepository: AgentConversationRepository,
         toolProviders: List<ToolProvider> = emptyList(),
-        toolExecutor: AgentToolSet? = null,
     ) {
         if (isConfigured) return
 
@@ -83,7 +98,6 @@ object AgentOrchestrator {
         llmRuntime = LlmRuntime(appContext, llmHelper)
         this.conversationRepository = conversationRepository
         this.toolProviders = toolProviders
-        this.toolExecutor = toolExecutor
         isConfigured = true
 
         ILog.i(TAG, "configure", "configured", "tools=${toolProviders.size}")
@@ -140,7 +154,7 @@ object AgentOrchestrator {
         callback: AgentCallCallback,
     ) {
         performAgentCall(
-            contents = Contents.of(buildAgentTurnPrompt(prompt)),
+            contents = Contents.of(prompt),
             persistedUserText = prompt,
             conversationId = conversationId,
             agent = agent,
@@ -169,61 +183,60 @@ object AgentOrchestrator {
             )
 
             AgentToolResultStore.clear()
-            val observedToolPayloads = mutableSetOf<String>()
+            var finalText = ""
+            var failed = false
 
-            var nextInput: AgentLoopInput = AgentLoopInput.User(contents)
-            var started = false
-
-            for (step in 1..MAX_AGENT_STEPS) {
-                ILog.d(TAG, "performAgentCall", "agent step=$step")
-                val stepResult = runAgentStep(
-                    input = nextInput,
-                    emitStarted = !started,
-                    callback = callback,
-                )
-                started = true
-
-                val toolResults = collectToolResults(
-                    nativeToolResults = stepResult.toolResults,
-                    conversationId = conversation.id,
-                    callback = callback,
-                    observedToolPayloads = observedToolPayloads,
-                )
-
-                if (toolResults.isNotEmpty()) {
-                    ILog.d(TAG, "performAgentCall", "feeding tool results to model", "count=${toolResults.size}")
-                    nextInput = AgentLoopInput.ToolResults(toolResults)
-                    continue
-                }
-
-                val plannedToolCall = parsePlannedToolCall(stepResult.finalText)
-                if (plannedToolCall != null) {
-                    val plannedToolResult = executePlannedToolCall(plannedToolCall)
-                    if (plannedToolResult != null) {
-                        ILog.d(TAG, "performAgentCall", "executed planned tool", plannedToolCall.name)
-                        val plannedResults = collectToolResults(
-                            nativeToolResults = listOf(plannedToolResult),
-                            conversationId = conversation.id,
-                            callback = callback,
-                            observedToolPayloads = observedToolPayloads,
-                        )
-                        nextInput = AgentLoopInput.ToolResults(plannedResults.ifEmpty { listOf(plannedToolResult) })
-                        continue
+            coroutineScope {
+                val toolStartedJob = launch(start = CoroutineStart.UNDISPATCHED) {
+                    AgentToolResultStore.startedEvents.collect { event ->
+                        callback.onToolStarted(event.name, event.input)
                     }
                 }
 
-                if (stepResult.finalText.isNotBlank()) {
-                    callback.onMessage(stepResult.finalText)
-                    conversationRepository.appendModelMessage(
-                        conversationId = conversation.id,
-                        text = stepResult.finalText,
-                    )
+                try {
+                    llmRuntime.sendMessageFinal(contents).collect { event ->
+                        when (event) {
+                            LlmChatEvent.Started -> callback.onStarted()
+                            is LlmChatEvent.Message -> {
+                                finalText = event.text
+                                callback.onMessage(event.text)
+                            }
+                            is LlmChatEvent.ToolResponse -> {
+                                dispatchToolResponse(
+                                    conversationId = conversation.id,
+                                    name = event.name,
+                                    payload = event.payload,
+                                    callback = callback,
+                                )
+                            }
+                            is LlmChatEvent.Completed -> {
+                                finalText = event.text
+                            }
+                            is LlmChatEvent.Failed -> {
+                                failed = true
+                                callback.onFailed(event.message, event.cause)
+                            }
+                        }
+                    }
+                } finally {
+                    toolStartedJob.cancel()
                 }
-                callback.onCompleted(stepResult.finalText)
-                return@runCatching
             }
 
-            callback.onFailed("Agent reached max tool steps ($MAX_AGENT_STEPS)")
+            if (failed) return@runCatching
+
+            dispatchRecordedToolResponses(
+                conversationId = conversation.id,
+                callback = callback,
+            )
+
+            if (finalText.isNotBlank()) {
+                conversationRepository.appendModelMessage(
+                    conversationId = conversation.id,
+                    text = finalText,
+                )
+            }
+            callback.onCompleted(finalText)
         }.onFailure { error ->
             ILog.e(TAG, "performAgentCall", "failed", throwable = error)
             callback.onFailed(error.message ?: "Agent call failed", error)
@@ -269,69 +282,22 @@ object AgentOrchestrator {
         activeRuntimeAgentId = agent.id
     }
 
-    private suspend fun runAgentStep(
-        input: AgentLoopInput,
-        emitStarted: Boolean,
-        callback: AgentCallCallback,
-    ): AgentStepResult {
-        var finalText = ""
-        val toolResults = mutableListOf<AgentToolResult>()
-
-        val events = when (input) {
-            is AgentLoopInput.User -> llmRuntime.sendMessage(input.contents)
-            is AgentLoopInput.ToolResults -> llmRuntime.sendToolResponses(
-                input.results.map { LlmToolResponse(it.name, it.payload) }
-            )
-        }
-
-        events.collect { event ->
-            when (event) {
-                LlmChatEvent.Started -> {
-                    if (emitStarted) callback.onStarted()
-                }
-                is LlmChatEvent.Message -> {
-                    finalText = event.text
-                }
-                is LlmChatEvent.ToolResponse -> {
-                    toolResults += AgentToolResult(event.name, event.payload)
-                }
-                is LlmChatEvent.Completed -> {
-                    finalText = event.text
-                }
-                is LlmChatEvent.Failed -> {
-                    callback.onFailed(event.message, event.cause)
-                }
-            }
-        }
-
-        return AgentStepResult(
-            finalText = finalText,
-            toolResults = toolResults,
-        )
-    }
-
-    private suspend fun collectToolResults(
-        nativeToolResults: List<AgentToolResult>,
+    private suspend fun dispatchRecordedToolResponses(
         conversationId: String,
         callback: AgentCallCallback,
-        observedToolPayloads: MutableSet<String>,
-    ): List<AgentToolResult> {
-        val results = (nativeToolResults + AgentToolResultStore.drain())
+    ) {
+        val results = AgentToolResultStore.drain()
             .distinctBy { "${it.name}:${it.payload}" }
-            .filterNot { "${it.name}:${it.payload}" in observedToolPayloads }
 
-        ILog.d(TAG, "collectToolResults", "count=${results.size}")
+        ILog.d(TAG, "dispatchRecordedToolResponses", "count=${results.size}")
         results.forEach { result ->
             dispatchToolResponse(
                 conversationId = conversationId,
                 name = result.name,
                 payload = result.payload,
                 callback = callback,
-                observedToolPayloads = observedToolPayloads,
             )
         }
-
-        return results
     }
 
     private suspend fun dispatchToolResponse(
@@ -339,10 +305,7 @@ object AgentOrchestrator {
         name: String,
         payload: String,
         callback: AgentCallCallback,
-        observedToolPayloads: MutableSet<String>,
     ) {
-        if (!observedToolPayloads.add("$name:$payload")) return
-
         ILog.d(TAG, "dispatchToolResponse", "name=$name", "payloadLength=${payload.length}")
         conversationRepository.appendToolMessage(
             conversationId = conversationId,
@@ -350,98 +313,6 @@ object AgentOrchestrator {
         )
         callback.onToolResponse(name, payload)
     }
-
-    private fun executePlannedToolCall(toolCall: PlannedToolCall): AgentToolResult? {
-        val executor = toolExecutor ?: return null
-        AgentToolResultStore.clear()
-
-        val payload = when (toolCall.name) {
-            "searchProducts" -> executor.searchProducts(
-                query = toolCall.args.string("query") ?: toolCall.args.string("q") ?: return null,
-                page = toolCall.args.int("page") ?: 1,
-                limit = toolCall.args.int("limit") ?: 6,
-            )
-            "compareProductPrices" -> executor.compareProductPrices(
-                query = toolCall.args.string("query") ?: toolCall.args.string("q") ?: return null,
-            )
-            "getTrendingDeals" -> executor.getTrendingDeals(
-                limit = toolCall.args.int("limit") ?: 6,
-            )
-            "inspectProductDeals" -> executor.inspectProductDeals(
-                productId = toolCall.args.string("productId")
-                    ?: toolCall.args.string("product_id")
-                    ?: return null,
-                limit = toolCall.args.int("limit") ?: 6,
-            )
-            "analyzeListingPrice" -> executor.analyzeListingPrice(
-                platformProductId = toolCall.args.string("platformProductId")
-                    ?: toolCall.args.string("platform_product_id")
-                    ?: return null,
-                currentPrice = toolCall.args.double("currentPrice")
-                    ?: toolCall.args.double("current_price")
-                    ?: return null,
-                originalPrice = toolCall.args.double("originalPrice")
-                    ?: toolCall.args.double("original_price")
-                    ?: toolCall.args.double("currentPrice")
-                    ?: toolCall.args.double("current_price")
-                    ?: return null,
-            )
-            else -> return null
-        }
-
-        return AgentToolResult(toolCall.name, payload)
-    }
-
-    private fun parsePlannedToolCall(text: String): PlannedToolCall? {
-        val jsonText = text.extractJsonObject() ?: return null
-        val root = runCatching { JsonParser.parseString(jsonText).asJsonObject }.getOrNull() ?: return null
-        val name = root.string("tool") ?: root.string("name") ?: return null
-        val args = root.getAsJsonObject("args")
-            ?: root.getAsJsonObject("arguments")
-            ?: JsonObject()
-
-        return PlannedToolCall(name = name, args = args)
-    }
-
-    private fun String.extractJsonObject(): String? {
-        val trimmed = trim()
-            .removePrefix("```json")
-            .removePrefix("```")
-            .removeSuffix("```")
-            .trim()
-        val start = trimmed.indexOf('{')
-        val end = trimmed.lastIndexOf('}')
-        if (start < 0 || end <= start) return null
-        return trimmed.substring(start, end + 1)
-    }
-
-    private fun buildAgentTurnPrompt(prompt: String): String =
-        """
-            User request:
-            $prompt
-
-            Decide the next action.
-            If product data, pricing, availability, store listings, deals, or comparison is needed, return only this JSON shape:
-            {"tool":"compareProductPrices","args":{"query":"$prompt"}}
-
-            Choose one tool:
-            - searchProducts: broad product discovery by query.
-            - compareProductPrices: price comparison, best place to buy, where to buy, vs/comparison.
-            - getTrendingDeals: hot deals, discounts, sale, trending deals.
-            - inspectProductDeals: listings for a known product id.
-            - analyzeListingPrice: deal quality for a known platform listing id and price.
-
-            If no tool is needed, answer normally.
-        """.trimIndent()
-
-    private fun JsonObject.string(name: String): String? =
-        get(name)?.takeIf { !it.isJsonNull }?.asString
-
-    private fun JsonObject.int(name: String): Int? =
-        get(name)?.takeIf { !it.isJsonNull }?.runCatching { asInt }?.getOrNull()
-
-    private fun JsonObject.double(name: String): Double? =
-        get(name)?.takeIf { !it.isJsonNull }?.runCatching { asDouble }?.getOrNull()
 
     private fun buildConversationConfig(
         agent: Agent,
@@ -520,18 +391,4 @@ object AgentOrchestrator {
         activeRuntimeAgentId = null
     }
 
-    private sealed interface AgentLoopInput {
-        data class User(val contents: Contents) : AgentLoopInput
-        data class ToolResults(val results: List<AgentToolResult>) : AgentLoopInput
-    }
-
-    private data class AgentStepResult(
-        val finalText: String,
-        val toolResults: List<AgentToolResult>,
-    )
-
-    private data class PlannedToolCall(
-        val name: String,
-        val args: JsonObject,
-    )
 }

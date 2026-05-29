@@ -3,6 +3,7 @@ package android.app.producthunt.core.agent
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.PlatformListingDto
 import android.app.producthunt.data.remote.dto.PriceAnalysisResponse
+import android.app.producthunt.data.remote.dto.PriceRecordResponse
 import android.app.producthunt.data.repository.PlatformProductRepository
 import android.app.producthunt.data.repository.PriceRecordRepository
 import android.app.producthunt.data.repository.ProductRepository
@@ -10,6 +11,7 @@ import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
 import com.google.ai.edge.litertlm.ToolSet
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
@@ -22,7 +24,6 @@ class AgentToolSet(
 
     private companion object {
         private const val MAX_TOOL_ITEMS = 6
-        private const val MAX_ANALYZED_LISTINGS = 3
     }
 
     @Tool(
@@ -32,9 +33,14 @@ class AgentToolSet(
         @ToolParam(description = "Product keyword, category, brand, or user phrase. Minimum 2 characters.") query: String,
         @ToolParam(description = "Page number (1-based).") page: Int = 1,
         @ToolParam(description = "Number of products to return. Keep small for concise answers.") limit: Int = MAX_TOOL_ITEMS,
-    ): String = (when (val result = runBlocking(Dispatchers.IO) {
-        productRepository.search(query, page, limit.coerceIn(1, MAX_TOOL_ITEMS))
-    }) {
+    ): JsonElement {
+        AgentToolResultStore.recordStarted(
+            name = "searchProducts",
+            input = "query=$query, page=$page, limit=${limit.coerceIn(1, MAX_TOOL_ITEMS)}",
+        )
+        return (when (val result = runBlocking(Dispatchers.IO) {
+            productRepository.search(query, page, limit.coerceIn(1, MAX_TOOL_ITEMS))
+        }) {
         is UiState.Success -> AgentSearchResult(
             keyword = result.data.keyword,
             totalResults = result.data.totalResults,
@@ -54,45 +60,22 @@ class AgentToolSet(
             products = emptyList(),
             error = "Search not ready",
         )
-    }).recordToolResult("searchProducts")
+        }).recordToolResult("searchProducts")
+    }
 
     @Tool(
-        description = "Compare matching products with platform listings and prices. Use this for best price, where to buy, compare, vs, Shopee/Lazada/Tiki, and platform availability questions."
-    )
-    fun compareProductPrices(
-        @ToolParam(description = "Product or comparison query. Examples: 'iPhone 15', 'Samsung Tab S10 vs iPad Mini'.") query: String,
-    ): String = (when (val result = runBlocking(Dispatchers.IO) {
-        productRepository.compare(query)
-    }) {
-        is UiState.Success -> AgentCompareResult(
-            keyword = result.data.keyword,
-            totalResults = result.data.totalResults,
-            items = result.data.data
-                .take(MAX_TOOL_ITEMS)
-                .map { it.toSummary() },
-        )
-        is UiState.Error -> AgentCompareResult(
-            keyword = query,
-            totalResults = 0,
-            items = emptyList(),
-            error = result.message,
-        )
-        else -> AgentCompareResult(
-            keyword = query,
-            totalResults = 0,
-            items = emptyList(),
-            error = "Compare not ready",
-        )
-    }).recordToolResult("compareProductPrices")
-
-    @Tool(
-        description = "Get current trending deals sorted by discount magnitude. Use this for hot deals, today's deals, discounts, and bargain hunting."
+        description = "Get current trending deals from /api/v1/platform_products/platform-products/trending. Use for hot deals, today's deals, discounts, and bargain hunting."
     )
     fun getTrendingDeals(
         @ToolParam(description = "Maximum number of deals to return.") limit: Int = MAX_TOOL_ITEMS,
-    ): String = (when (val result = runBlocking(Dispatchers.IO) {
-        platformProductRepository.getTrending(limit.coerceIn(1, MAX_TOOL_ITEMS))
-    }) {
+    ): JsonElement {
+        AgentToolResultStore.recordStarted(
+            name = "getTrendingDeals",
+            input = "limit=${limit.coerceIn(1, MAX_TOOL_ITEMS)}",
+        )
+        return (when (val result = runBlocking(Dispatchers.IO) {
+            platformProductRepository.getTrending(limit.coerceIn(1, MAX_TOOL_ITEMS))
+        }) {
         is UiState.Success -> AgentTrendingResult(
             totalResults = result.data.size,
             items = result.data
@@ -109,17 +92,23 @@ class AgentToolSet(
             items = emptyList(),
             error = "Trending not ready",
         )
-    }).recordToolResult("getTrendingDeals")
+        }).recordToolResult("getTrendingDeals")
+    }
 
     @Tool(
-        description = "Inspect marketplace listings for a canonical product id and analyze the best few listing prices against price history. Use after searchProducts when the user picks a product or asks if a product has a good deal."
+        description = "Get product detail for a canonical product id using /api/v1/platform_products/platform-products/by-product-id. Returns marketplace listings, prices, stock, platform names, and URLs."
     )
-    fun inspectProductDeals(
-        @ToolParam(description = "Canonical product UUID returned by searchProducts or compareProductPrices.") productId: String,
+    fun getProductDetail(
+        @ToolParam(description = "Canonical product UUID returned by searchProducts.") productId: String,
         @ToolParam(description = "Maximum number of marketplace listings to return.") limit: Int = MAX_TOOL_ITEMS,
-    ): String = (when (val result = runBlocking(Dispatchers.IO) {
-        platformProductRepository.getListingsByProductId(productId)
-    }) {
+    ): JsonElement {
+        AgentToolResultStore.recordStarted(
+            name = "getProductDetail",
+            input = "productId=$productId, limit=${limit.coerceIn(1, MAX_TOOL_ITEMS)}",
+        )
+        return (when (val result = runBlocking(Dispatchers.IO) {
+            platformProductRepository.getListingsByProductId(productId)
+        }) {
         is UiState.Success -> {
             val listings = result.data
                 .sortedBy { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
@@ -128,17 +117,7 @@ class AgentToolSet(
             AgentProductListingsResult(
                 productId = productId,
                 totalResults = result.data.size,
-                listings = listings.mapIndexed { index, listing ->
-                    val analysis = if (index < MAX_ANALYZED_LISTINGS) {
-                        listing.loadAnalysis()
-                    } else {
-                        null
-                    }
-                    AgentListingDealSummary(
-                        listing = listing.toSummary(),
-                        analysis = analysis,
-                    )
-                },
+                listings = listings.map { it.toSummary() },
             )
         }
         is UiState.Error -> AgentProductListingsResult(
@@ -153,18 +132,73 @@ class AgentToolSet(
             listings = emptyList(),
             error = "Product listings not ready",
         )
-    }).recordToolResult("inspectProductDeals")
+        }).recordToolResult("getProductDetail")
+    }
 
     @Tool(
-        description = "Analyze whether a specific platform listing price is historically good. Use when the user provides or selects a platform_product_id."
+        description = "Get price history records for a platform product listing from /api/v1/price_record/price-records/{platform_product_id}. Prefer this for price trend, history, lowest price, and deal-quality questions."
+    )
+    fun getProductPriceRecords(
+        @ToolParam(description = "Platform product listing UUID from getProductDetail listings.") platformProductId: String,
+        @ToolParam(description = "Maximum number of recent price records to return.") limit: Int = MAX_TOOL_ITEMS,
+    ): JsonElement {
+        AgentToolResultStore.recordStarted(
+            name = "getProductPriceRecords",
+            input = "platformProductId=$platformProductId, limit=${limit.coerceIn(1, MAX_TOOL_ITEMS)}",
+        )
+        return (when (val result = runBlocking(Dispatchers.IO) {
+            priceRecordRepository.getHistory(platformProductId)
+        }) {
+        is UiState.Success -> {
+            val records = result.data
+            AgentPriceRecordsResult(
+                platformProductId = platformProductId,
+                totalRecords = records.size,
+                latest = records.lastOrNull()?.toSummary(),
+                lowestPrice = records.mapNotNull { it.price.toDoubleOrNull() }.minOrNull(),
+                highestPrice = records.mapNotNull { it.price.toDoubleOrNull() }.maxOrNull(),
+                recentRecords = records
+                    .takeLast(limit.coerceIn(1, MAX_TOOL_ITEMS))
+                    .asReversed()
+                    .map { it.toSummary() },
+            )
+        }
+        is UiState.Error -> AgentPriceRecordsResult(
+            platformProductId = platformProductId,
+            totalRecords = 0,
+            latest = null,
+            lowestPrice = null,
+            highestPrice = null,
+            recentRecords = emptyList(),
+            error = result.message,
+        )
+        else -> AgentPriceRecordsResult(
+            platformProductId = platformProductId,
+            totalRecords = 0,
+            latest = null,
+            lowestPrice = null,
+            highestPrice = null,
+            recentRecords = emptyList(),
+            error = "Price records not ready",
+        )
+        }).recordToolResult("getProductPriceRecords")
+    }
+
+    @Tool(
+        description = "Analyze whether a specific platform listing price is historically good. Use only when a direct status label is needed; prefer getProductPriceRecords for price history and trend evidence."
     )
     fun analyzeListingPrice(
         @ToolParam(description = "Platform product listing UUID.") platformProductId: String,
         @ToolParam(description = "Current listing price as a number.") currentPrice: Double,
         @ToolParam(description = "Original listing price as a number. Use currentPrice if original price is unavailable.") originalPrice: Double,
-    ): String = (when (val result = runBlocking(Dispatchers.IO) {
-        priceRecordRepository.getAnalysis(platformProductId, currentPrice, originalPrice)
-    }) {
+    ): JsonElement {
+        AgentToolResultStore.recordStarted(
+            name = "analyzeListingPrice",
+            input = "platformProductId=$platformProductId, currentPrice=$currentPrice, originalPrice=$originalPrice",
+        )
+        return (when (val result = runBlocking(Dispatchers.IO) {
+            priceRecordRepository.getAnalysis(platformProductId, currentPrice, originalPrice)
+        }) {
         is UiState.Success -> AgentPriceAnalysisResult(
             platformProductId = platformProductId,
             analysis = result.data.toSummary(),
@@ -177,24 +211,13 @@ class AgentToolSet(
             platformProductId = platformProductId,
             error = "Price analysis not ready",
         )
-    }).recordToolResult("analyzeListingPrice")
-
-    private fun PlatformListingDto.loadAnalysis(): AgentPriceAnalysisSummary? {
-        val current = currentPrice.toDoubleOrNull() ?: return null
-        val original = originalPrice?.toDoubleOrNull() ?: current
-
-        return when (val result = runBlocking(Dispatchers.IO) {
-            priceRecordRepository.getAnalysis(id, current, original)
-        }) {
-            is UiState.Success -> result.data.toSummary()
-            else -> null
-        }
+        }).recordToolResult("analyzeListingPrice")
     }
 
-    private fun <T : Any> T.recordToolResult(name: String): String {
+    private fun <T : Any> T.recordToolResult(name: String): JsonElement {
         val payload = gson.toJson(this)
         AgentToolResultStore.recordPayload(name, payload)
-        return payload
+        return gson.toJsonTree(this)
     }
 }
 
@@ -212,26 +235,6 @@ data class AgentSearchResult(
     val keyword: String,
     val totalResults: Int,
     val products: List<AgentProductSummary>,
-    val error: String? = null,
-)
-
-data class AgentCompareItemSummary(
-    val id: String,
-    val slug: String?,
-    val productName: String,
-    val lowestPrice: Double?,
-    val platformCount: Int,
-    val bestPlatform: String?,
-    val bestListingUrl: String?,
-    val estimatedSavings: Double?,
-    val mainImageUrl: String?,
-    val platforms: List<AgentPlatformListingSummary>,
-)
-
-data class AgentCompareResult(
-    val keyword: String,
-    val totalResults: Int,
-    val items: List<AgentCompareItemSummary>,
     val error: String? = null,
 )
 
@@ -272,19 +275,32 @@ data class AgentPlatformListingSummary(
 data class AgentProductListingsResult(
     val productId: String,
     val totalResults: Int,
-    val listings: List<AgentListingDealSummary>,
+    val listings: List<AgentPlatformListingSummary>,
     val error: String? = null,
-)
-
-data class AgentListingDealSummary(
-    val listing: AgentPlatformListingSummary,
-    val analysis: AgentPriceAnalysisSummary?,
 )
 
 data class AgentPriceAnalysisResult(
     val platformProductId: String,
     val analysis: AgentPriceAnalysisSummary? = null,
     val error: String? = null,
+)
+
+data class AgentPriceRecordsResult(
+    val platformProductId: String,
+    val totalRecords: Int,
+    val latest: AgentPriceRecordSummary?,
+    val lowestPrice: Double?,
+    val highestPrice: Double?,
+    val recentRecords: List<AgentPriceRecordSummary>,
+    val error: String? = null,
+)
+
+data class AgentPriceRecordSummary(
+    val id: Int,
+    val price: Double?,
+    val originalPrice: Double?,
+    val isFlashSale: Boolean,
+    val recordedAt: String,
 )
 
 data class AgentPriceAnalysisSummary(
@@ -304,30 +320,6 @@ private fun android.app.producthunt.data.remote.dto.ProductResponse.toSummary():
         category = category,
         slug = slug,
         mainImageUrl = mainImageUrl,
-    )
-
-private fun android.app.producthunt.data.remote.dto.SearchCompareItem.toSummary(): AgentCompareItemSummary =
-    AgentCompareItemSummary(
-        id = id,
-        slug = slug,
-        productName = productName,
-        lowestPrice = lowestPrice,
-        platformCount = platforms.size,
-        bestPlatform = platforms
-            .minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
-            ?.platformId
-            ?.platformName(),
-        bestListingUrl = platforms
-            .minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
-            ?.url,
-        estimatedSavings = platforms
-            .mapNotNull { it.currentPrice.toDoubleOrNull() }
-            .takeIf { it.size >= 2 }
-            ?.let { prices -> (prices.maxOrNull() ?: 0.0) - (prices.minOrNull() ?: 0.0) },
-        mainImageUrl = mainImageUrl,
-        platforms = platforms
-            .sortedBy { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
-            .map { it.toSummary() },
     )
 
 private fun android.app.producthunt.data.remote.dto.TrendingDealResponse.toSummary(): AgentTrendingItemSummary =
@@ -371,6 +363,15 @@ private fun PriceAnalysisResponse.toSummary(): AgentPriceAnalysisSummary =
         averagePrice30d = averagePrice,
         status = status,
         label = dealLabel,
+    )
+
+private fun PriceRecordResponse.toSummary(): AgentPriceRecordSummary =
+    AgentPriceRecordSummary(
+        id = id,
+        price = price.toDoubleOrNull(),
+        originalPrice = originalPrice?.toDoubleOrNull(),
+        isFlashSale = isFlashSale,
+        recordedAt = recordedAt,
     )
 
 private fun calculateDiscountPercent(current: Double?, original: Double?): Double? {

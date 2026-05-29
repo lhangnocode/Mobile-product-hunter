@@ -10,7 +10,6 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
-import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -117,17 +116,38 @@ class LlmRuntime(
         }
     }.flowOn(Dispatchers.IO)
 
-    fun sendToolResponses(toolResponses: List<LlmToolResponse>): Flow<LlmChatEvent> =
-        sendMessage(
-            Contents.of(
-                toolResponses.map { response ->
-                    Content.ToolResponse(
-                        name = response.name,
-                        response = response.payload.toJsonPayload(),
-                    )
-                }
-            )
-        )
+    fun sendMessageFinal(contents: Contents): Flow<LlmChatEvent> = flow {
+        emit(LlmChatEvent.Started)
+
+        val activeConversation = mutex.withLock {
+            conversation ?: error("No active LLM conversation")
+        }
+
+        try {
+            val response = activeConversation.sendMessage(contents)
+            if (response.toolCalls.isNotEmpty()) {
+                ILog.w(
+                    TAG,
+                    "sendMessageFinal",
+                    "model returned tool calls to app",
+                    "count=${response.toolCalls.size}",
+                )
+            }
+
+            response.extractToolResponses().forEach { toolEvent ->
+                emit(toolEvent)
+            }
+
+            val text = response.extractText()
+            if (text.isNotBlank()) {
+                emit(LlmChatEvent.Message(text))
+            }
+            emit(LlmChatEvent.Completed(text))
+        } catch (e: Exception) {
+            ILog.e(TAG, "sendMessageFinal", "failed", throwable = e)
+            emit(LlmChatEvent.Failed(e.message ?: "LLM message failed", e))
+        }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun cancel() = mutex.withLock {
         ILog.i(TAG, "cancel", "active conversation")
@@ -161,10 +181,6 @@ class LlmRuntime(
             incoming.startsWith(current) -> incoming
             else -> current + incoming
         }
-
-    private fun String.toJsonPayload(): Any =
-        runCatching { JsonParser.parseString(this) }
-            .getOrElse { this }
 
     private fun Message.extractToolResponses(): List<LlmChatEvent.ToolResponse> {
         val toolResponses = contents.contents.filterIsInstance<Content.ToolResponse>()

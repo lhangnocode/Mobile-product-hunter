@@ -1,10 +1,9 @@
 package android.app.producthunt.ui.viewmodel
 
 import android.app.producthunt.core.agent.AgentCallCallback
-import android.app.producthunt.core.agent.AgentCompareItemSummary
 import android.app.producthunt.core.agent.AgentOrchestrator
-import android.app.producthunt.core.agent.AgentCompareResult
 import android.app.producthunt.core.agent.AgentPriceAnalysisResult
+import android.app.producthunt.core.agent.AgentPriceRecordsResult
 import android.app.producthunt.core.agent.AgentProductListingsResult
 import android.app.producthunt.core.agent.AgentProductSummary
 import android.app.producthunt.core.agent.AgentSearchResult
@@ -45,7 +44,6 @@ class AgentSearchViewModel @Inject constructor(
 
         viewModelScope.launch {
             val responseConversationId = conversationId
-            var toolSummaryText: String? = null
             AgentOrchestrator.performAgentCall(
                 prompt = query,
                 conversationId = responseConversationId,
@@ -54,28 +52,28 @@ class AgentSearchViewModel @Inject constructor(
                         this@AgentSearchViewModel.conversationId = conversationId
                     }
 
+                    override fun onStarted() {
+                        updateMessage(responseIndex, "Thinking...", isLoading = true)
+                    }
+
+                    override fun onToolStarted(name: String, input: String) {
+                        updateMessage(
+                            index = responseIndex,
+                            text = "${name.toToolStatusText()}\n$input",
+                            isLoading = true,
+                        )
+                    }
+
                     override fun onMessage(text: String) {
                         updateMessage(responseIndex, text, isLoading = false)
                     }
 
                     override fun onToolResponse(name: String, payload: String) {
-                        summarizeToolPayload(payload)?.let { summary ->
-                            toolSummaryText = summary
-                            updateMessage(responseIndex, summary, isLoading = false)
-                        }
                         appendToolMessage(payload)
                     }
 
                     override fun onCompleted(text: String) {
-                        val resolvedText = if (
-                            toolSummaryText != null &&
-                            (text.isBlank() || text.looksLikeNoToolDataAnswer())
-                        ) {
-                            toolSummaryText.orEmpty()
-                        } else {
-                            text
-                        }
-                        updateMessage(responseIndex, resolvedText, isLoading = false)
+                        updateMessage(responseIndex, text, isLoading = false)
                         loadToolMessages(this@AgentSearchViewModel.conversationId)
                         _uiState.update { it.copy(isSending = false) }
                     }
@@ -152,9 +150,9 @@ class AgentSearchViewModel @Inject constructor(
 
     private fun parseToolMessage(text: String): ChatMessage? =
         parseSearchResult(text)
-            ?: parseCompareResult(text)
             ?: parseTrendingResult(text)
             ?: parseProductListingsResult(text)
+            ?: parsePriceRecordsResult(text)
             ?: parsePriceAnalysisResult(text)
             ?: run {
                 ILog.w(TAG, "parseToolMessage", "unsupported tool payload")
@@ -170,20 +168,6 @@ class AgentSearchViewModel @Inject constructor(
                     text = it.error ?: "Tôi tìm thấy ${it.totalResults} sản phẩm:",
                     isUser = false,
                     agentProductList = products,
-                    showAgentHeader = true,
-                )
-            }
-        }.getOrNull()
-
-    private fun parseCompareResult(text: String): ChatMessage? =
-        runCatching {
-            val result = gson.fromJson(text, AgentCompareResult::class.java)
-            val items = result.items.orEmpty()
-            result.takeIf { items.isNotEmpty() || it.error != null }?.let {
-                ChatMessage(
-                    text = it.error ?: "So sánh ${it.totalResults} sản phẩm:",
-                    isUser = false,
-                    agentCompareItems = items,
                     showAgentHeader = true,
                 )
             }
@@ -227,73 +211,26 @@ class AgentSearchViewModel @Inject constructor(
             }
         }.getOrNull()
 
-    private fun summarizeToolPayload(text: String): String? =
-        runCatching { gson.fromJson(text, AgentSearchResult::class.java) }
-            .getOrNull()
-            ?.takeIf { it.products.orEmpty().isNotEmpty() || it.error != null }
-            ?.let { summarizeSearchResult(it) }
-            ?: runCatching { gson.fromJson(text, AgentCompareResult::class.java) }
-                .getOrNull()
-                ?.takeIf { it.items.orEmpty().isNotEmpty() || it.error != null }
-                ?.let { summarizeCompareResult(it) }
-            ?: runCatching { gson.fromJson(text, AgentTrendingResult::class.java) }
-                .getOrNull()
-                ?.takeIf { it.items.orEmpty().isNotEmpty() || it.error != null }
-                ?.let { summarizeTrendingResult(it) }
-            ?: runCatching { gson.fromJson(text, AgentProductListingsResult::class.java) }
-                .getOrNull()
-                ?.takeIf { it.listings.orEmpty().isNotEmpty() || it.error != null }
-                ?.let { summarizeProductListingsResult(it) }
-            ?: runCatching { gson.fromJson(text, AgentPriceAnalysisResult::class.java) }
-                .getOrNull()
-                ?.takeIf { it.analysis != null || it.error != null }
-                ?.let { summarizePriceAnalysisResult(it) }
-
-    private fun summarizeSearchResult(result: AgentSearchResult): String {
-        result.error?.let { return it }
-        val products = result.products.orEmpty()
-        if (products.isEmpty()) return "Không tìm thấy sản phẩm phù hợp cho \"${result.keyword}\"."
-
-        val topProducts = products.take(3).joinToString(separator = "\n") { product ->
-            "- ${product.productName ?: "Sản phẩm"}${product.brand?.let { " ($it)" } ?: ""}"
-        }
-        return "Tôi tìm thấy ${result.totalResults} sản phẩm cho \"${result.keyword}\".\n$topProducts"
-    }
-
-    private fun summarizeCompareResult(result: AgentCompareResult): String {
-        result.error?.let { return it }
-        val items = result.items.orEmpty()
-        if (items.isEmpty()) return "Không tìm thấy dữ liệu so sánh cho \"${result.keyword}\"."
-
-        val best = items.minByOrNull { it.lowestPrice ?: Double.MAX_VALUE } ?: items.first()
-        val bestPrice = best.lowestPrice?.formatVnd() ?: "chưa có giá"
-        val savings = best.estimatedSavings
-            ?.takeIf { it > 0.0 }
-            ?.let { ", chênh lệch khoảng ${it.formatVnd()}" }
-            .orEmpty()
-
-        return "Tôi đã lấy dữ liệu giá cho \"${result.keyword}\". Lựa chọn rẻ nhất hiện thấy là ${best.productName} tại ${best.bestPlatform ?: "một nền tảng"} với giá $bestPrice$savings. Tôi cũng hiển thị các lựa chọn so sánh bên dưới."
-    }
-
-    private fun summarizeTrendingResult(result: AgentTrendingResult): String {
-        result.error?.let { return it }
-        val items = result.items.orEmpty()
-        if (items.isEmpty()) return "Chưa có deal trending phù hợp."
-
-        val top = items.first()
-        val discount = top.discountPercent?.let { " giảm ${it.toInt()}%" }.orEmpty()
-        return "Deal nổi bật: ${top.productName} tại ${top.platformName ?: "một nền tảng"} giá ${top.currentPrice.formatVnd()}$discount. Tôi hiển thị thêm các deal bên dưới."
-    }
+    private fun parsePriceRecordsResult(text: String): ChatMessage? =
+        runCatching {
+            val result = gson.fromJson(text, AgentPriceRecordsResult::class.java)
+            result.takeIf { it.recentRecords.orEmpty().isNotEmpty() || it.error != null }?.let {
+                ChatMessage(
+                    text = it.error ?: summarizePriceRecordsResult(it),
+                    isUser = false,
+                    showAgentHeader = true,
+                )
+            }
+        }.getOrNull()
 
     private fun summarizeProductListingsResult(result: AgentProductListingsResult): String {
         result.error?.let { return it }
         val listings = result.listings.orEmpty()
         if (listings.isEmpty()) return "Không tìm thấy listing cho sản phẩm này."
 
-        val best = listings.minByOrNull { it.listing.currentPrice ?: Double.MAX_VALUE } ?: listings.first()
-        val price = best.listing.currentPrice?.formatVnd() ?: "chưa có giá"
-        val label = best.analysis?.label?.let { " ($it)" }.orEmpty()
-        return "Tôi tìm thấy ${result.totalResults} listing. Giá tốt nhất hiện là $price tại ${best.listing.platformName}$label."
+        val best = listings.minByOrNull { it.currentPrice ?: Double.MAX_VALUE } ?: listings.first()
+        val price = best.currentPrice?.formatVnd() ?: "chưa có giá"
+        return "Tôi tìm thấy ${result.totalResults} listing. Giá tốt nhất hiện là $price tại ${best.platformName}."
     }
 
     private fun summarizePriceAnalysisResult(result: AgentPriceAnalysisResult): String {
@@ -304,37 +241,33 @@ class AgentSearchViewModel @Inject constructor(
         return "Giá hiện tại ${analysis.currentPrice.formatVnd()} được đánh giá: $label$low."
     }
 
-    private fun String.looksLikeNoToolDataAnswer(): Boolean {
-        val normalized = lowercase()
-        return listOf(
-            "couldn't access",
-            "could not access",
-            "can't access",
-            "cannot access",
-            "don't have access",
-            "do not have access",
-            "real-time pricing",
-            "real time pricing",
-            "availability data",
-            "future or unreleased",
-            "không thể truy cập",
-            "không có dữ liệu",
-        ).any { it in normalized }
+    private fun summarizePriceRecordsResult(result: AgentPriceRecordsResult): String {
+        result.error?.let { return it }
+        val latest = result.latest?.price?.formatVnd() ?: "chưa có giá mới nhất"
+        val low = result.lowestPrice?.formatVnd() ?: "chưa rõ"
+        val high = result.highestPrice?.formatVnd() ?: "chưa rõ"
+        return "Lịch sử giá có ${result.totalRecords} bản ghi. Giá mới nhất $latest, thấp nhất $low, cao nhất $high."
     }
 
     private fun Double.formatVnd(): String =
         "%,.0f đ".format(this)
 
+    private fun String.toToolStatusText(): String =
+        when (this) {
+            "searchProducts" -> "Searching products..."
+            "getProductDetail" -> "Getting product detail..."
+            "getTrendingDeals" -> "Checking trending deals..."
+            "getProductPriceRecords" -> "Checking price records..."
+            "analyzeListingPrice" -> "Analyzing listing price..."
+            else -> "Using tool: $this..."
+        }
+
     private fun ChatMessage.hasSameAgentPayload(other: ChatMessage): Boolean =
         text == other.text &&
             agentProductList.sameProducts(other.agentProductList) &&
-            agentCompareItems.sameCompareItems(other.agentCompareItems) &&
             agentTrendingItems.sameTrendingItems(other.agentTrendingItems)
 
     private fun List<AgentProductSummary>.sameProducts(other: List<AgentProductSummary>): Boolean =
-        map { it.id to it.productName } == other.map { it.id to it.productName }
-
-    private fun List<AgentCompareItemSummary>.sameCompareItems(other: List<AgentCompareItemSummary>): Boolean =
         map { it.id to it.productName } == other.map { it.id to it.productName }
 
     private fun List<AgentTrendingItemSummary>.sameTrendingItems(other: List<AgentTrendingItemSummary>): Boolean =

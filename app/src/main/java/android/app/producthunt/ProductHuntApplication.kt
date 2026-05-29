@@ -40,7 +40,6 @@ class ProductHuntApplication : Application() {
             toolProviders = listOf(
                 tool(agentToolSet)
             ),
-            toolExecutor = agentToolSet,
         )
 
         applicationScope.launch {
