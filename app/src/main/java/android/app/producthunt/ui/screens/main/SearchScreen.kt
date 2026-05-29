@@ -1,12 +1,16 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.core.agent.AgentCompareItemSummary
+import android.app.producthunt.core.agent.AgentProductSummary
+import android.app.producthunt.core.agent.AgentTrendingItemSummary
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.ProductResponse
 import android.app.producthunt.data.remote.dto.UserResponse
-import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.components.SearchModeSwitch
 import android.app.producthunt.ui.components.UserAvatar
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.*
+import android.app.producthunt.ui.viewmodel.AgentSearchViewModel
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ProductViewModel
 import androidx.compose.foundation.background
@@ -22,7 +26,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +43,6 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -48,7 +50,8 @@ fun SearchScreen(
     navController: NavController,
     initialQuery: String? = null,
     authViewModel: AuthViewModel = hiltViewModel(),
-    viewModel: ProductViewModel = hiltViewModel()
+    viewModel: ProductViewModel = hiltViewModel(),
+    agentViewModel: AgentSearchViewModel = hiltViewModel(),
 ) {
     var searchQuery by remember { mutableStateOf(initialQuery ?: "") }
     var searchMode by remember { mutableStateOf("AI Agent") }
@@ -57,16 +60,16 @@ fun SearchScreen(
     val listState = rememberLazyListState()
 
     // Separate chat histories for Search and AI Agent
-    val aiMessages = remember { mutableStateListOf<ChatMessage>() }
     val searchMessages = remember { mutableStateListOf<ChatMessage>() }
-
-    // Use current messages based on mode
-    val currentMessages = if (searchMode == "AI Agent") aiMessages else searchMessages
 
     // Observe backend search state
     val searchState by viewModel.searchState.collectAsState()
     val currentUserState by authViewModel.currentUserState.collectAsState()
     val currentUser = (currentUserState as? UiState.Success)?.data
+    val agentState by agentViewModel.uiState.collectAsState()
+
+    // Use current messages based on mode
+    val currentMessages = if (searchMode == "AI Agent") agentState.messages else searchMessages
 
     // Handle backend search results for "Search" mode
     LaunchedEffect(searchState) {
@@ -95,16 +98,16 @@ fun SearchScreen(
     }
 
     // Auto-scroll to bottom
-    LaunchedEffect(currentMessages.size) {
+    LaunchedEffect(currentMessages.size, currentMessages.lastOrNull()?.text) {
         if (currentMessages.isNotEmpty()) {
             listState.animateScrollToItem(currentMessages.lastIndex)
         }
     }
 
     LaunchedEffect(initialQuery) {
-        if (!initialQuery.isNullOrBlank() && aiMessages.isEmpty()) {
+        if (!initialQuery.isNullOrBlank() && agentState.messages.isEmpty()) {
             scope.launch {
-                performAiSearch(initialQuery, aiMessages)
+                agentViewModel.sendQuery(initialQuery)
             }
         }
     }
@@ -128,7 +131,9 @@ fun SearchScreen(
                         onSuggestionClick = { query ->
                             searchQuery = query
                             if (searchMode == "AI Agent") {
-                                scope.launch { performAiSearch(query, aiMessages) }
+                                scope.launch {
+                                    agentViewModel.sendQuery(query)
+                                }
                             } else {
                                 performNormalSearch(query, searchMessages, viewModel)
                             }
@@ -139,6 +144,18 @@ fun SearchScreen(
                         messages = currentMessages,
                         listState = listState,
                         onProductClick = { product ->
+                            product.id?.let { id ->
+                                val encodedImage = product.mainImageUrl?.let {
+                                    URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
+                                }
+                                val route = buildString {
+                                    append("${Route.PRODUCT_DETAIL}/$id")
+                                    if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                }
+                                navController.navigate(route)
+                            }
+                        },
+                        onAgentProductClick = { product ->
                             product.id?.let { id ->
                                 val encodedImage = product.mainImageUrl?.let {
                                     URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
@@ -164,7 +181,9 @@ fun SearchScreen(
                         val queryToSend = searchQuery
                         searchQuery = ""
                         if (searchMode == "AI Agent") {
-                            scope.launch { performAiSearch(queryToSend, aiMessages) }
+                            scope.launch {
+                                agentViewModel.sendQuery(queryToSend)
+                            }
                         } else {
                             performNormalSearch(queryToSend, searchMessages, viewModel)
                         }
@@ -176,36 +195,12 @@ fun SearchScreen(
     }
 }
 
-private fun performNormalSearch(query: String, messages: SnapshotStateList<ChatMessage>, viewModel: ProductViewModel) {
+private fun performNormalSearch(query: String, messages: MutableList<ChatMessage>, viewModel: ProductViewModel) {
     messages.add(ChatMessage(text = query, isUser = true))
     messages.add(ChatMessage(text = "", isUser = false, isLoading = true, showAgentHeader = false))
     viewModel.search(query)
 }
 
-private suspend fun performAiSearch(query: String, chatMessages: SnapshotStateList<ChatMessage>) {
-    chatMessages.add(ChatMessage(text = query, isUser = true))
-    chatMessages.add(ChatMessage(text = "", isUser = false, isLoading = true, showAgentHeader = true))
-    
-    delay(1500)
-    if (chatMessages.isNotEmpty()) {
-        chatMessages.removeAt(chatMessages.lastIndex)
-    }
-    
-    if (query.lowercase().contains("compare") || query.lowercase().contains("so sánh")) {
-        chatMessages.add(ChatMessage(
-            text = "Dưới đây là bảng so sánh chi tiết giữa các sản phẩm bạn yêu cầu:",
-            isUser = false,
-            isComparison = true,
-            showAgentHeader = true
-        ))
-    } else {
-        chatMessages.add(ChatMessage(
-            text = "Tôi đã tìm thấy một số lựa chọn tốt nhất cho \"$query\". Bạn có muốn xem lịch sử giá không?",
-            isUser = false,
-            showAgentHeader = true
-        ))
-    }
-}
 
 data class ChatMessage(
     val text: String,
@@ -216,6 +211,11 @@ data class ChatMessage(
     val isDetail: Boolean = false,
     val productData: ProductResponse? = null,
     val productList: List<ProductResponse> = emptyList(),
+    val compareItems: List<android.app.producthunt.data.remote.dto.SearchCompareItem> = emptyList(),
+    val trendingItems: List<android.app.producthunt.data.remote.dto.TrendingDealResponse> = emptyList(),
+    val agentProductList: List<AgentProductSummary> = emptyList(),
+    val agentCompareItems: List<AgentCompareItemSummary> = emptyList(),
+    val agentTrendingItems: List<AgentTrendingItemSummary> = emptyList(),
     val showAgentHeader: Boolean = true
 )
 
@@ -301,9 +301,10 @@ fun DiscoveryLanding(
 
 @Composable
 fun ConversationArea(
-    messages: List<ChatMessage>, 
+    messages: List<ChatMessage>,
     listState: androidx.compose.foundation.lazy.LazyListState,
-    onProductClick: (ProductResponse) -> Unit
+    onProductClick: (ProductResponse) -> Unit,
+    onAgentProductClick: (AgentProductSummary) -> Unit,
 ) {
     LazyColumn(
         state = listState,
@@ -313,11 +314,200 @@ fun ConversationArea(
     ) {
         items(messages) { message ->
             when {
+                message.agentCompareItems.isNotEmpty() -> AgentCompareSummaryMessage(message)
+                message.agentTrendingItems.isNotEmpty() -> AgentTrendingSummaryMessage(message)
+                message.agentProductList.isNotEmpty() -> AgentProductSummaryListMessage(message, onAgentProductClick)
+                message.compareItems.isNotEmpty() -> AgentCompareMessage(message)
+                message.trendingItems.isNotEmpty() -> TrendingDealsMessage(message)
                 message.isComparison -> AIComparisonMessage(message.text)
                 message.isProductList -> ProductListMessage(message, onProductClick)
                 message.isDetail -> InlineProductDetail(message)
                 else -> ChatBubble(message)
             }
+        }
+    }
+}
+
+@Composable
+fun AgentProductSummaryListMessage(
+    message: ChatMessage,
+    onProductClick: (AgentProductSummary) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.showAgentHeader) AgentHeader()
+        Text(text = message.text, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+        Spacer(Modifier.height(16.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            message.agentProductList.forEach { product ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = product.id != null) { onProductClick(product) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(70.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (product.mainImageUrl != null) {
+                                AsyncImage(
+                                    model = product.mainImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                product.productName ?: "Sản phẩm",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                product.brand ?: "Thông tin từ agent",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AgentCompareSummaryMessage(message: ChatMessage) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.showAgentHeader) AgentHeader()
+        val title = if (message.text.isNotBlank()) message.text else "So sánh ${message.agentCompareItems.size} sản phẩm"
+        Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            message.agentCompareItems.forEach { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AgentSummaryImage(item.mainImageUrl)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = item.productName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${item.platformCount} nền tảng",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                        item.lowestPrice?.let { price ->
+                            Text(
+                                text = price.toString(),
+                                color = PH_Primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AgentTrendingSummaryMessage(message: ChatMessage) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.showAgentHeader) AgentHeader()
+        val title = if (message.text.isNotBlank()) message.text else "Deals hot hôm nay"
+        Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            message.agentTrendingItems.forEach { deal ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AgentSummaryImage(deal.mainImageUrl)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = deal.productName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${deal.discountPercent?.toInt() ?: 0}% off",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Text(
+                            text = deal.currentPrice.toString(),
+                            color = PH_Primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AgentSummaryImage(imageUrl: String?) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -351,6 +541,137 @@ fun ChatBubble(message: ChatMessage) {
                         fontSize = 15.sp,
                         lineHeight = 22.sp,
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AgentCompareMessage(message: ChatMessage) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.showAgentHeader) AgentHeader()
+        val total = message.compareItems.size
+        val title = if (message.text.isNotBlank()) message.text else "So sánh ${total} sản phẩm"
+        Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            message.compareItems.forEach { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (item.mainImageUrl != null) {
+                                AsyncImage(
+                                    model = item.mainImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = item.productName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${item.platforms.size} nền tảng",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (item.lowestPrice != null) {
+                            Text(
+                                text = "${item.lowestPrice}",
+                                color = PH_Primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TrendingDealsMessage(message: ChatMessage) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.showAgentHeader) AgentHeader()
+        val title = if (message.text.isNotBlank()) message.text else "Deals hot hôm nay"
+        Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+        Spacer(Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            message.trendingItems.forEach { deal ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (deal.mainImageUrl != null) {
+                                AsyncImage(
+                                    model = deal.mainImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = deal.productName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${deal.discountPercent?.toInt() ?: 0}% off",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Text(
+                            text = "${deal.currentPrice}",
+                            color = PH_Primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
         }
@@ -522,9 +843,8 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
     ) {
         Box(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 20.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
                 .navigationBarsPadding()
-                .imePadding()
         ) {
             TextField(
                 value = value,

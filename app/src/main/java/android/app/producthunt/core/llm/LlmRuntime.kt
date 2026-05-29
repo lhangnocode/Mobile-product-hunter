@@ -10,6 +10,7 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -42,7 +43,7 @@ class LlmRuntime(
         return isDownloaded
     }
 
-    suspend fun `init`(): Result<Unit> = mutex.withLock {
+    suspend fun init(): Result<Unit> = mutex.withLock {
         withContext(Dispatchers.IO) {
             runCatching {
                 if (engine?.isInitialized() == true) {
@@ -65,8 +66,6 @@ class LlmRuntime(
                     backend = Backend.GPU(),
                     visionBackend = Backend.CPU(),
                     audioBackend = Backend.CPU(),
-                    maxNumTokens = null,
-                    maxNumImages = null,
                     cacheDir = cacheDir.absolutePath,
                 )
 
@@ -103,8 +102,13 @@ class LlmRuntime(
         var latestText = ""
         try {
             activeConversation.sendMessageAsync(contents).collect { response ->
-                latestText = response.extractText()
-                emit(LlmChatEvent.Message(latestText))
+                response.extractToolResponses().forEach { toolEvent ->
+                    emit(toolEvent)
+                }
+                latestText = mergeStreamText(latestText, response.extractText())
+                if (latestText.isNotEmpty()) {
+                    emit(LlmChatEvent.Message(latestText))
+                }
             }
             emit(LlmChatEvent.Completed(latestText))
         } catch (e: Exception) {
@@ -112,6 +116,18 @@ class LlmRuntime(
             emit(LlmChatEvent.Failed(e.message ?: "LLM message failed", e))
         }
     }.flowOn(Dispatchers.IO)
+
+    fun sendToolResponses(toolResponses: List<LlmToolResponse>): Flow<LlmChatEvent> =
+        sendMessage(
+            Contents.of(
+                toolResponses.map { response ->
+                    Content.ToolResponse(
+                        name = response.name,
+                        response = response.payload.toJsonPayload(),
+                    )
+                }
+            )
+        )
 
     suspend fun cancel() = mutex.withLock {
         ILog.i(TAG, "cancel", "active conversation")
@@ -138,4 +154,29 @@ class LlmRuntime(
         contents.contents
             .filterIsInstance<Content.Text>()
             .joinToString(separator = "") { it.text }
+
+    private fun mergeStreamText(current: String, incoming: String): String =
+        when {
+            incoming.isEmpty() -> current
+            incoming.startsWith(current) -> incoming
+            else -> current + incoming
+        }
+
+    private fun String.toJsonPayload(): Any =
+        runCatching { JsonParser.parseString(this) }
+            .getOrElse { this }
+
+    private fun Message.extractToolResponses(): List<LlmChatEvent.ToolResponse> {
+        val toolResponses = contents.contents.filterIsInstance<Content.ToolResponse>()
+        if (toolResponses.isEmpty()) return emptyList()
+
+        return toolResponses.map { response ->
+            val payload = when (val toolPayload = response.response) {
+                is String -> toolPayload
+                else -> com.google.gson.Gson().toJson(toolPayload)
+            }
+            ILog.d(TAG, "extractToolResponses", "name=${response.name}", "payloadLength=${payload.length}")
+            LlmChatEvent.ToolResponse(response.name, payload)
+        }
+    }
 }
