@@ -40,6 +40,10 @@ import coil.compose.AsyncImage
 import android.content.Intent
 import android.net.Uri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun ProductDetailScreen(
@@ -99,18 +103,18 @@ fun ProductDetailScreen(
                 if (listings.isEmpty()) {
                     EmptyState(navController)
                 } else {
-                    val firstListing = listings.first()
+                    val bestListing = listings.bestPricedListing()
                     
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
                     ) {
-                        ProductHeaderCinematic(firstListing, imageUrl)
+                        ProductHeaderCinematic(bestListing, imageUrl)
 
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                             Text(
-                                text = firstListing.rawName ?: "Sản phẩm tìm thấy",
+                                text = bestListing.rawName ?: "Sản phẩm tìm thấy",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onBackground,
@@ -479,7 +483,26 @@ fun AnalysisCard(label: String, value: String, icon: androidx.compose.ui.graphic
 
 @Composable
 fun ModernPriceChart(history: List<PriceRecordResponse>) {
-    if (history.size < 2) {
+    val points = history
+        .mapIndexedNotNull { index, record ->
+            record.price.toFloatOrNull()?.let { price ->
+                PriceChartPoint(
+                    price = price,
+                    recordedAt = record.recordedAt,
+                    recordedAtMillis = parseRecordedAtMillis(record.recordedAt),
+                    sourceIndex = index,
+                )
+            }
+        }
+        .sortedWith { left, right ->
+            when {
+                left.recordedAtMillis != null && right.recordedAtMillis != null ->
+                    left.recordedAtMillis.compareTo(right.recordedAtMillis)
+                else -> left.sourceIndex.compareTo(right.sourceIndex)
+            }
+        }
+
+    if (points.size < 2) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -493,7 +516,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
         return
     }
 
-    val prices = history.map { it.price.toFloatOrNull() ?: 0f }
+    val prices = points.map { it.price }
     val rawMaxPrice = prices.maxOrNull() ?: 1f
     val rawMinPrice = prices.minOrNull() ?: 0f
     val rawRange = rawMaxPrice - rawMinPrice
@@ -505,29 +528,49 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
     val chartMaxPrice = rawMaxPrice + pricePadding
     val chartMinPrice = (rawMinPrice - pricePadding).coerceAtLeast(0f)
     val chartRange = (chartMaxPrice - chartMinPrice).coerceAtLeast(1f)
+    val yAxisLabels = List(5) { index ->
+        chartMaxPrice - (chartRange * index / 4f)
+    }
+    val xAxisIndexes = chartAxisIndexes(points.size)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val axisTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(320.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(28.dp))
-            .padding(vertical = 12.dp)
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 58.dp, end = 18.dp, top = 28.dp, bottom = 42.dp)
+        ) {
             val width = size.width
             val height = size.height
             val spacing = width / (prices.size - 1).coerceAtLeast(1)
 
-            val path = Path()
+            yAxisLabels.forEach { label ->
+                val y = height - ((label - chartMinPrice) / chartRange * height)
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(width, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f),
+                )
+            }
+
+            val linePath = Path()
             prices.forEachIndexed { i, price ->
                 val x = i * spacing
                 val y = height - ((price - chartMinPrice) / chartRange * height)
-                if (i == 0) path.moveTo(x, y) else {
+                if (i == 0) linePath.moveTo(x, y) else {
                     val prevX = (i - 1) * spacing
                     val prevY = height - ((prices[i-1] - chartMinPrice) / chartRange * height)
-                    path.cubicTo(
+                    linePath.cubicTo(
                         (prevX + x) / 2f, prevY,
                         (prevX + x) / 2f, y,
                         x, y
@@ -535,34 +578,109 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
                 }
             }
 
-            // Glow Effect
+            val fillPath = Path().apply {
+                addPath(linePath)
+                lineTo(width, height)
+                lineTo(0f, height)
+                close()
+            }
+
             drawPath(
-                path = path,
-                brush = Brush.verticalGradient(listOf(PH_Primary.copy(alpha = 0.3f), Color.Transparent)),
-                style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    listOf(PH_Primary.copy(alpha = 0.24f), Color.Transparent),
+                    startY = 0f,
+                    endY = height,
+                ),
             )
 
-            // Main Line
             drawPath(
-                path = path,
+                path = linePath,
                 color = PH_Primary,
                 style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // Current Point Bloom
             val lastX = (prices.size - 1) * spacing
             val lastY = height - ((prices.last() - chartMinPrice) / chartRange * height)
             drawCircle(color = PH_Primary.copy(alpha = 0.2f), radius = 15.dp.toPx(), center = Offset(lastX, lastY))
             drawCircle(color = PH_Primary, radius = 6.dp.toPx(), center = Offset(lastX, lastY))
             drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(lastX, lastY))
         }
-        
-        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text("%,.0f đ".format(chartMaxPrice), modifier = Modifier.align(Alignment.TopStart), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-            Text("%,.0f đ".format(chartMinPrice), modifier = Modifier.align(Alignment.BottomStart), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 12.dp, top = 22.dp, bottom = 48.dp)
+                .width(44.dp)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.End,
+        ) {
+            yAxisLabels.forEach { label ->
+                Text(
+                    text = formatCompactPrice(label),
+                    fontSize = 11.sp,
+                    color = axisTextColor,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 58.dp, end = 18.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            xAxisIndexes.forEach { index ->
+                Text(
+                    text = formatDateAxisLabel(points[index].recordedAt),
+                    fontSize = 11.sp,
+                    color = axisTextColor,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
+
+private data class PriceChartPoint(
+    val price: Float,
+    val recordedAt: String,
+    val recordedAtMillis: Long?,
+    val sourceIndex: Int,
+)
+
+private fun chartAxisIndexes(size: Int): List<Int> {
+    if (size <= 4) return (0 until size).toList()
+    return listOf(0, size / 3, (size * 2) / 3, size - 1).distinct()
+}
+
+private fun formatCompactPrice(price: Float): String =
+    when {
+        price >= 1_000_000f -> String.format(Locale.US, "%.1fM", price / 1_000_000f)
+        price >= 1_000f -> String.format(Locale.US, "%.0fK", price / 1_000f)
+        else -> String.format(Locale.US, "%.0f", price)
+    }
+
+private fun formatDateAxisLabel(rawDate: String): String {
+    val formatter = DateTimeFormatter.ofPattern("dd/MM")
+    return runCatching { OffsetDateTime.parse(rawDate).format(formatter) }
+        .recoverCatching { LocalDateTime.parse(rawDate).format(formatter) }
+        .getOrElse {
+            if (rawDate.length >= 10) "${rawDate.substring(8, 10)}/${rawDate.substring(5, 7)}" else rawDate
+        }
+}
+
+private fun parseRecordedAtMillis(rawDate: String): Long? =
+    runCatching { OffsetDateTime.parse(rawDate).toInstant().toEpochMilli() }
+        .recoverCatching {
+            LocalDateTime.parse(rawDate).toInstant(OffsetDateTime.now().offset).toEpochMilli()
+        }
+        .getOrNull()
 
 @Composable
 fun MarketComparisonSection(listings: List<PlatformListingDto>) {
@@ -628,12 +746,16 @@ private fun PlatformBadge(platformName: String) {
 private fun platformName(platformId: Int): String =
     when (platformId) {
         1 -> "Shopee"
-        2 -> "Tiki"
-        3 -> "Lazada"
-        5 -> "CellphoneS"
+        2 -> "Lazada"
+        3 -> "Tiki"
         7 -> "FPT Shop"
-        else -> "Shop"
+        8 -> "Phong Vu"
+        9 -> "CellphoneS"
+        else -> "Platform $platformId"
     }
+
+private fun List<PlatformListingDto>.bestPricedListing(): PlatformListingDto =
+    minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE } ?: first()
 
 @Composable
 private fun EmptyState(navController: NavController) {

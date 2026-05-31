@@ -75,7 +75,7 @@ class ProductDetailViewModel @Inject constructor(
             _listingsState.value = listingsResult
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
-                val firstListing = listingsResult.data.first()
+                val firstListing = listingsResult.data.bestPricedListing()
                 
                 val currentPrice = firstListing.currentPrice.toDoubleOrNull() ?: 0.0
                 val originalPrice = firstListing.originalPrice?.toDoubleOrNull() ?: currentPrice
@@ -122,3 +122,6 @@ class ProductDetailViewModel @Inject constructor(
         _priceAlertState.value = UiState.Idle
     }
 }
+
+private fun List<PlatformListingDto>.bestPricedListing(): PlatformListingDto =
+    minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE } ?: first()
