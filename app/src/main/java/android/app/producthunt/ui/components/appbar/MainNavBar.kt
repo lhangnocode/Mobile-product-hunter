@@ -5,6 +5,7 @@ import android.app.producthunt.ui.navigation.TopLevelRoutes
 import android.app.producthunt.ui.navigation.baseRouteOrNull
 import android.app.producthunt.ui.navigation.navigateToTopLevelDestination
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import android.app.producthunt.ui.theme.PHIcons
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -12,11 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -65,10 +61,10 @@ private fun MainNavBarContent(
 ) {
     val items = remember {
         listOf(
-            BottomNavItem(Route.FEED, "Feed", Icons.Default.RssFeed),
-            BottomNavItem(Route.SEARCH, "Search", Icons.Default.ChatBubbleOutline),
-            BottomNavItem(Route.WISHLIST, "Wishlist", Icons.Default.FavoriteBorder),
-            BottomNavItem(Route.ALERTS, "Alerts", Icons.Default.NotificationsNone),
+            BottomNavItem(Route.FEED, "Feed", PHIcons.Trending),
+            BottomNavItem(Route.SEARCH, "Search", PHIcons.Search),
+            BottomNavItem(Route.WISHLIST, "Wishlist", PHIcons.WishlistOutlined),
+            BottomNavItem(Route.ALERTS, "Alerts", PHIcons.NotificationsOutlined),
         )
     }
 

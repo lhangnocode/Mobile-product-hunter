@@ -1,13 +1,15 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.data.remote.dto.ProductResponse
+import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.detailProductId
+import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PH_Primary
-import android.app.producthunt.ui.viewmodel.ProductViewModel
 import android.app.producthunt.ui.viewmodel.TrendingViewModel
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -20,44 +22,37 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     trendingViewModel: TrendingViewModel = hiltViewModel(),
-    productViewModel: ProductViewModel = hiltViewModel(),
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
+        val trendingState by trendingViewModel.trendingState.collectAsState()
+        
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
-            // Only Trending Deals section remains as requested
             item {
                 SectionHeader(title = "Trending Deals", onActionClick = { /* View more logic */ })
             }
             
             item {
-                val productsState by productViewModel.productsState.collectAsState()
                 ProductListSection(
-                    productsState = productsState,
-                    onProductClick = { product ->
-                        product.id?.let { id ->
-                            val encodedImage = product.mainImageUrl?.let {
-                                URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
-                            }
-                            val route = buildString {
-                                append("${Route.PRODUCT_DETAIL}/$id")
-                                if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
-                            }
-                            navController.navigate(route)
+                    trendingState = trendingState,
+                    onProductClick = { deal ->
+                        val encodedImage = deal.mainImageUrl?.let { Uri.encode(it) }
+                        val route = buildString {
+                            append("${Route.PRODUCT_DETAIL}/${deal.detailProductId}")
+                            if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
                         }
+                        navController.navigate(route)
                     }
                 )
             }
@@ -83,34 +78,40 @@ private fun SectionHeader(title: String, onActionClick: () -> Unit) {
 
 @Composable
 private fun ProductListSection(
-    productsState: UiState<List<ProductResponse>>,
-    onProductClick: (ProductResponse) -> Unit
+    trendingState: UiState<List<TrendingDealResponse>>,
+    onProductClick: (TrendingDealResponse) -> Unit
 ) {
-    when (productsState) {
+    when (trendingState) {
         is UiState.Success -> {
-            val products = productsState.data.take(10)
+            val deals = trendingState.data.take(10)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                products.chunked(2).forEach { rowProducts ->
+                deals.chunked(2).forEach { rowDeals ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        rowProducts.forEach { product ->
+                        rowDeals.forEach { deal ->
+                            val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
+                            val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                            val discountLabel = deal.discountLabel()
+
                             ProductGridCard(
-                                title = product.productName ?: "",
-                                imageUrl = product.mainImageUrl,
-                                brand = product.brand,
-                                currentPrice = "Check price",
+                                title = deal.productName,
+                                imageUrl = deal.mainImageUrl,
+                                brand = "Hàng chính hãng",
+                                currentPrice = currentPriceLabel,
+                                originalPrice = originalPriceLabel,
+                                discount = discountLabel,
                                 modifier = Modifier.weight(1f),
-                                onProductClick = { onProductClick(product) }
+                                onProductClick = { onProductClick(deal) }
                             )
                         }
-                        if (rowProducts.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        if (rowDeals.size == 1) Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -120,7 +121,12 @@ private fun ProductListSection(
                 CircularProgressIndicator(color = PH_Primary)
             }
         }
-        else -> { /* Error handled simplified */ }
+        is UiState.Error -> {
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Text(text = "Failed to load deals", color = MaterialTheme.colorScheme.error)
+            }
+        }
+        else -> {}
     }
 }
 

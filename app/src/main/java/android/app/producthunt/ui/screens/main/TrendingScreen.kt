@@ -1,6 +1,8 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.detailProductId
+import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.TrendingViewModel
@@ -44,63 +46,65 @@ fun TrendingScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
             )
+            
             when (val state = trendingState) {
-            is UiState.Loading, UiState.Idle -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PH_Primary)
+                is UiState.Loading, UiState.Idle -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = PH_Primary)
+                    }
                 }
-            }
-            is UiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = state.message,
-                        color = PH_Status_Error_Text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(32.dp)
-                    )
-                }
-            }
-            is UiState.Success -> {
-                if (state.data.isEmpty()) {
+                is UiState.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "Hiện chưa có deal nào đang trending. Quay lại sau nhé!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            text = state.message,
+                            color = PH_Status_Error_Text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(32.dp)
                         )
                     }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        items(state.data) { deal ->
-                            val discountLabel = deal.discountPercent?.let { "-${it.toInt()}%" }
-                            val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
-                            val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
-                            
-                            ProductGridCard(
-                                title = deal.productName,
-                                currentPrice = currentPriceLabel,
-                                imageUrl = deal.mainImageUrl,
-                                originalPrice = originalPriceLabel,
-                                discount = discountLabel,
-                                isWishlisted = false,
-                                onProductClick = {
-                                    val encodedUrl = deal.mainImageUrl?.let { Uri.encode(it) } ?: ""
-                                    navController.navigate("${Route.PRODUCT_DETAIL}/${deal.id}?imageUrl=$encodedUrl")
-                                },
-                                onWishlistClick = {},
+                }
+                is UiState.Success -> {
+                    if (state.data.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "Hiện chưa có deal nào đang trending. Quay lại sau nhé!",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
                             )
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                            contentPadding = PaddingValues(bottom = 80.dp)
+                        ) {
+                            items(state.data) { deal ->
+                                val discountLabel = deal.discountLabel()
+                                val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
+                                val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                                
+                                ProductGridCard(
+                                    title = deal.productName,
+                                    currentPrice = currentPriceLabel,
+                                    imageUrl = deal.mainImageUrl,
+                                    brand = null,
+                                    originalPrice = originalPriceLabel,
+                                    discount = discountLabel,
+                                    isWishlisted = false,
+                                    onProductClick = {
+                                        val encodedUrl = deal.mainImageUrl?.let { Uri.encode(it) } ?: ""
+                                        navController.navigate("${Route.PRODUCT_DETAIL}/${deal.detailProductId}?imageUrl=$encodedUrl")
+                                    },
+                                    onWishlistClick = {},
+                                )
+                            }
                         }
                     }
                 }
-            }
             }
         }
     }

@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FlashOn
 import coil.compose.AsyncImage
 
 @Composable
@@ -73,23 +75,6 @@ fun ProductGridCard(
                         )
                     }
                 }
-
-                // Discount Badge overlay
-                if (!discount.isNullOrBlank()) {
-                    Surface(
-                        modifier = Modifier.padding(8.dp).align(Alignment.TopStart),
-                        color = PH_Primary,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = discount,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
                 
                 // Wishlist Icon overlay
                 IconButton(
@@ -135,24 +120,61 @@ fun ProductGridCard(
                 modifier = Modifier.heightIn(min = 36.dp)
             )
 
-            // Price Section (Optional)
+            // Price Section
             if (!currentPrice.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
+                
+                // Row cho Giá gốc và Tag giảm giá (Sát nhau theo mẫu)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    if (!originalPrice.isNullOrBlank()) {
+                        Text(
+                            text = originalPrice,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            textDecoration = TextDecoration.LineThrough,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    
+                    if (!discount.isNullOrBlank()) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = Color(0xFFFF5A00),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = discount,
+                                fontSize = 11.sp,
+                                color = Color(0xFFD84315),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(2.dp))
+                
+                // Giá hiện tại (Đỏ đậm, to)
                 Text(
                     text = currentPrice,
-                    color = PH_Primary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    color = Color(0xFFB71C1C),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (!originalPrice.isNullOrBlank()) {
-                    Text(
-                        text = originalPrice,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textDecoration = TextDecoration.LineThrough,
-                        fontSize = 11.sp
-                    )
-                }
             }
         }
     }

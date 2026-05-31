@@ -151,6 +151,8 @@ class MainActivity : ComponentActivity() {
                         topBar = {
                             when (chrome.topBar) {
                                 TopBarType.Main -> ProductHunterMainTopAppBar(
+                                    userName = currentUser?.fullName,
+                                    userEmail = currentUser?.email,
                                     onMenuClick = { scope.launch { drawerState.open() } },
                                     onProfileClick = { navController.navigate(Route.PROFILE) },
                                 )

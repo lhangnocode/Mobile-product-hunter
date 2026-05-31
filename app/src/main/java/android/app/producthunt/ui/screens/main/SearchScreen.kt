@@ -832,6 +832,7 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
                 ),
                 shape = RoundedCornerShape(26.dp),
                 trailingIcon = {
+                    val submitIcon = if (mode == "Search") Icons.Default.Search else Icons.Default.ArrowUpward
                     IconButton(
                         onClick = onSend,
                         modifier = Modifier
@@ -840,7 +841,7 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
                             .clip(CircleShape)
                             .background(Color(0xFFFCA5A5))
                     ) {
-                        Icon(Icons.Default.ArrowUpward, contentDescription = null, tint = Color(0xFF450A0A), modifier = Modifier.size(20.dp))
+                        Icon(submitIcon, contentDescription = null, tint = Color(0xFF450A0A), modifier = Modifier.size(20.dp))
                     }
                 }
             )

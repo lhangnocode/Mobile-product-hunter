@@ -1,15 +1,10 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.core.state.UiState
-import android.app.producthunt.data.remote.dto.PriceAlertResponse
 import android.app.producthunt.data.remote.dto.WishlistResponse
-import android.app.producthunt.model.PriceAlert
-import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
-import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,33 +19,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,58 +50,28 @@ import coil.compose.AsyncImage
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WishlistScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     wishlistViewModel: WishlistViewModel = hiltViewModel(),
-    priceAlertViewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
-    val alertsState by priceAlertViewModel.alertsState.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Saved Products", "Price Alerts", "Comparisons")
 
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tab Selector - Fixed for M3 1.3+ TabIndicatorScope API
-            SecondaryScrollableTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.Transparent,
-                contentColor = PH_Primary,
-                edgePadding = 16.dp,
-                divider = {},
-                indicator = {
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(selectedTab, matchContentSize = true),
-                        color = PH_Primary
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 14.sp,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                }
-            }
-
-            when (selectedTab) {
-                0 -> SavedProductsContent(wishlistState, navController, wishlistViewModel)
-                1 -> PriceAlertsContent(alertsState)
-                2 -> ComparisonsContent()
-            }
+            // Header for Wishlist
+            Text(
+                text = "Saved Products",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            
+            SavedProductsContent(wishlistState, navController, wishlistViewModel)
         }
     }
 }
@@ -229,65 +185,6 @@ fun WishlistProductCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun PriceAlertsContent(
-    state: UiState<List<PriceAlertResponse>>,
-) {
-    when (state) {
-        is UiState.Loading, UiState.Idle -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = PH_Primary)
-            }
-        }
-        is UiState.Error -> {
-            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text(text = "Error: ${state.message}", color = MaterialTheme.colorScheme.error)
-            }
-        }
-        is UiState.Success -> {
-            val alerts = state.data.mapIndexed { index, dto ->
-                val currentPrice = PriceAlertStatusMapper.displayCurrentPrice(dto)
-                val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
-                PriceAlert(
-                    id = index,
-                    name = dto.product?.productName ?: dto.productName ?: "Tracked product",
-                    subtitle = listOfNotNull(dto.product?.brand, dto.product?.category).joinToString(" • ")
-                        .ifBlank { "Product ${dto.productId.take(8)}" },
-                    imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
-                    currentPrice = currentPrice,
-                    targetPrice = dto.targetPrice,
-                    statusText = PriceAlertStatusMapper.statusText(dto),
-                    targetReached = targetReached,
-                    placeholderColor = Color(0xFF1E1E2E),
-                    placeholderIcon = Icons.Filled.Headphones,
-                )
-            }
-            if (alerts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No active price alerts", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(alerts.size) { index ->
-                        AlertCard(alert = alerts[index])
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ComparisonsContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("No saved comparisons", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
