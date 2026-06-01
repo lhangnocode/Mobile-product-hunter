@@ -34,7 +34,8 @@ fun HomeScreen(
         color = MaterialTheme.colorScheme.background,
     ) {
         val trendingState by trendingViewModel.trendingState.collectAsState()
-        
+        val wishlistedIds by trendingViewModel.wishlistedIds.collectAsState()
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp),
@@ -46,14 +47,18 @@ fun HomeScreen(
             item {
                 ProductListSection(
                     trendingState = trendingState,
+                    wishlistedIds = wishlistedIds,
                     onProductClick = { deal ->
                         val encodedImage = deal.mainImageUrl?.let { Uri.encode(it) }
+                        val encodedName = Uri.encode(deal.productName)
                         val route = buildString {
                             append("${Route.PRODUCT_DETAIL}/${deal.detailProductId}")
-                            if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                            append("?imageUrl=${encodedImage.orEmpty()}")
+                            append("&productName=$encodedName")
                         }
                         navController.navigate(route)
-                    }
+                    },
+                    onWishlistClick = { trendingViewModel.toggleWishlist(it) }
                 )
             }
         }
@@ -79,7 +84,9 @@ private fun SectionHeader(title: String, onActionClick: () -> Unit) {
 @Composable
 private fun ProductListSection(
     trendingState: UiState<List<TrendingDealResponse>>,
-    onProductClick: (TrendingDealResponse) -> Unit
+    wishlistedIds: Set<String>,
+    onProductClick: (TrendingDealResponse) -> Unit,
+    onWishlistClick: (String) -> Unit,
 ) {
     when (trendingState) {
         is UiState.Success -> {
@@ -108,7 +115,9 @@ private fun ProductListSection(
                                 originalPrice = originalPriceLabel,
                                 discount = discountLabel,
                                 modifier = Modifier.weight(1f),
-                                onProductClick = { onProductClick(deal) }
+                                isWishlisted = deal.detailProductId in wishlistedIds,
+                                onProductClick = { onProductClick(deal) },
+                                onWishlistClick = { onWishlistClick(deal.detailProductId) },
                             )
                         }
                         if (rowDeals.size == 1) Spacer(modifier = Modifier.weight(1f))

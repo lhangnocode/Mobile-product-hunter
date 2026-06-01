@@ -135,10 +135,15 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}",
+            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}&productName={productName}",
             arguments = listOf(
                 navArgument("productId") { type = NavType.StringType },
                 navArgument("imageUrl") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("productName") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
@@ -147,7 +152,8 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
             val imageUrl = backStackEntry.arguments?.getString("imageUrl")
-            ProductDetailScreen(navController = navController, productId = productId, imageUrl = imageUrl)
+            val productName = backStackEntry.arguments?.getString("productName")
+            ProductDetailScreen(navController = navController, productId = productId, imageUrl = imageUrl, productName = productName)
         }
 
         composable(Route.SIGNUP) {

@@ -4,15 +4,25 @@ import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
-import android.app.producthunt.ui.theme.*
-import android.app.producthunt.ui.viewmodel.TrendingViewModel
 import android.app.producthunt.ui.navigation.Route
+import android.app.producthunt.ui.theme.PHSpacing
+import android.app.producthunt.ui.theme.PH_Primary
+import android.app.producthunt.ui.theme.PH_Status_Error_Text
+import android.app.producthunt.ui.viewmodel.TrendingViewModel
 import android.net.Uri
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,6 +40,7 @@ fun TrendingScreen(
     viewModel: TrendingViewModel = hiltViewModel(),
 ) {
     val trendingState by viewModel.trendingState.collectAsState()
+    val wishlistedIds by viewModel.wishlistedIds.collectAsState()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -94,12 +105,13 @@ fun TrendingScreen(
                                     brand = null,
                                     originalPrice = originalPriceLabel,
                                     discount = discountLabel,
-                                    isWishlisted = false,
+                                    isWishlisted = deal.detailProductId in wishlistedIds,
                                     onProductClick = {
                                         val encodedUrl = deal.mainImageUrl?.let { Uri.encode(it) } ?: ""
-                                        navController.navigate("${Route.PRODUCT_DETAIL}/${deal.detailProductId}?imageUrl=$encodedUrl")
+                                        val encodedName = Uri.encode(deal.productName)
+                                        navController.navigate("${Route.PRODUCT_DETAIL}/${deal.detailProductId}?imageUrl=$encodedUrl&productName=$encodedName")
                                     },
-                                    onWishlistClick = {},
+                                    onWishlistClick = { viewModel.toggleWishlist(deal.detailProductId) },
                                 )
                             }
                         }

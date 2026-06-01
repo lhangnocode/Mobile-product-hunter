@@ -50,7 +50,8 @@ fun ProductDetailScreen(
     navController: NavController,
     productId: String?,
     imageUrl: String? = null,
-    viewModel: ProductDetailViewModel = hiltViewModel()
+    viewModel: ProductDetailViewModel = hiltViewModel(),
+    productName: String?
 ) {
     val listingsState by viewModel.listingsState.collectAsState()
     val historyState by viewModel.historyState.collectAsState()
@@ -82,7 +83,7 @@ fun ProductDetailScreen(
 
     val scrollState = rememberScrollState()
     val currentListings = (listingsState as? UiState.Success)?.data.orEmpty()
-    val currentProductTitle = currentListings.firstOrNull()?.rawName ?: "sản phẩm này"
+    val currentProductTitle = productName ?: "sản phẩm này"
     val currentProductPrice = currentListings
         .mapNotNull { it.currentPrice.toDoubleOrNull() }
         .minOrNull()
@@ -114,7 +115,7 @@ fun ProductDetailScreen(
 
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                             Text(
-                                text = bestListing.rawName ?: "Sản phẩm tìm thấy",
+                                text = currentProductTitle,
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onBackground,
