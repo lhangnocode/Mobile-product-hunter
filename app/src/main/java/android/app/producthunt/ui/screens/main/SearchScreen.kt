@@ -53,7 +53,7 @@ fun SearchScreen(
     agentViewModel: AgentSearchViewModel = hiltViewModel(),
 ) {
     var searchQuery by remember { mutableStateOf(initialQuery ?: "") }
-    var searchMode by remember { mutableStateOf("AI Agent") }
+    var searchMode by remember { mutableStateOf("Search") }
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
