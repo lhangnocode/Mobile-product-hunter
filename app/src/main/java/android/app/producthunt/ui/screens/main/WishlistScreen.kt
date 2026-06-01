@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -70,6 +70,11 @@ fun WishlistScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
+            if (wishlistState is UiState.Success && (wishlistState as UiState.Success).data.isNotEmpty()) {
+                TextButton(onClick = { wishlistViewModel.removeAll() }) {
+                    Text("Xóa tất cả", color = MaterialTheme.colorScheme.error)
+                }
+            }
             
             SavedProductsContent(wishlistState, navController, wishlistViewModel)
         }
@@ -175,14 +180,9 @@ fun WishlistProductCard(
                 Spacer(Modifier.height(4.dp))
                 Text(text = "↓ 300k from yesterday", color = Color(0xFF4CAF50), fontSize = 12.sp)
             }
-            
-            Column(horizontalAlignment = Alignment.End) {
-                IconButton(onClick = onRemoveClick) {
-                    Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.Red)
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+
+            IconButton(onClick = onRemoveClick) {
+                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.Red)
             }
         }
     }

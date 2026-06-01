@@ -42,4 +42,12 @@ class WishlistViewModel @Inject constructor(
             repository.add(productId)
         }
     }
+
+    fun removeAll() {
+        viewModelScope.launch {
+            val ids = (repository.wishlist.value as? UiState.Success)
+                ?.data?.map { it.productId } ?: return@launch
+            ids.forEach { repository.remove(it) }
+        }
+    }
 }
