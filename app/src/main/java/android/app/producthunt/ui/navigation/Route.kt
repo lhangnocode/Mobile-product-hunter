@@ -22,4 +22,5 @@ object Route {
     const val PRODUCT_DETAIL = "product_detail"
 
     const val APP_INFORMATION = "app_information"
+    const val AGENT_MANAGEMENT = "agent_management"
 }

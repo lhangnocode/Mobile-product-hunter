@@ -6,9 +6,8 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 fun NavController.navigateToTopLevelDestination(route: String) {
     navigate(route) {
         launchSingleTop = true
-        restoreState = true
         popUpTo(graph.findStartDestination().id) {
-            saveState = true
+            saveState = false
         }
     }
 }

@@ -2,6 +2,7 @@ package android.app.producthunt.ui.navigation
 
 import android.app.producthunt.ui.screens.*
 import android.app.producthunt.ui.screens.main.*
+import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,11 +22,13 @@ val TopLevelRoutes = listOf(
     Route.FEED,
     Route.SEARCH,
     Route.WISHLIST,
+    Route.ALERTS,
 )
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
+    authViewModel: AuthViewModel,
     modifier: Modifier = Modifier,
     startDestination: String = Route.AUTH_GATE,
 ) {
@@ -75,11 +78,11 @@ fun AppNavGraph(
         }
     ) {
         composable(Route.AUTH_GATE) {
-            AuthGateScreen(navController = navController)
+            AuthGateScreen(navController = navController, viewModel = authViewModel)
         }
 
         composable(Route.LOGIN) {
-            LoginScreen(navController = navController)
+            LoginScreen(navController = navController, viewModel = authViewModel)
         }
 
         composable(Route.FEED) {
@@ -97,7 +100,7 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("q")
             // SearchScreen will be the Chat-based interface
-            SearchScreen(navController = navController, initialQuery = query)
+            SearchScreen(navController = navController, initialQuery = query, authViewModel = authViewModel)
         }
 
         composable(Route.WISHLIST) {
@@ -109,11 +112,21 @@ fun AppNavGraph(
                 onNavigateToHunt = { navController.navigate(Route.FEED) },
                 onNavigateToDeals = { navController.navigate(Route.FEED) }, // Adjusting to Feed
                 onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
+                onProductSelected = { productId, imageUrl ->
+                    val encodedImage = imageUrl?.let {
+                        java.net.URLEncoder.encode(it, java.nio.charset.StandardCharsets.UTF_8.toString())
+                    }
+                    val route = buildString {
+                        append("${Route.PRODUCT_DETAIL}/$productId")
+                        if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                    }
+                    navController.navigate(route)
+                },
             )
         }
 
         composable(Route.PROFILE) {
-            ProfileScreen(navController = navController)
+            ProfileScreen(navController = navController, viewModel = authViewModel)
         }
 
         composable(Route.SEARCH_HISTORY) {
@@ -138,11 +151,11 @@ fun AppNavGraph(
         }
 
         composable(Route.SIGNUP) {
-            SignupScreen(navController = navController)
+            SignupScreen(navController = navController, viewModel = authViewModel)
         }
 
         composable(Route.FORGOT_PASSWORD) {
-            ForgotPasswordScreen()
+            ForgotPasswordScreen(viewModel = authViewModel)
         }
 
         composable(
@@ -161,11 +174,15 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
-            ResetPasswordScreen(navController = navController, token = token)
+            ResetPasswordScreen(navController = navController, token = token, viewModel = authViewModel)
         }
 
         composable(Route.APP_INFORMATION) {
             AppInformationScreen(modifier = Modifier.fillMaxSize())
+        }
+
+        composable(Route.AGENT_MANAGEMENT) {
+            AgentManagementScreen()
         }
     }
 }

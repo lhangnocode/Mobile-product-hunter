@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 fun ProductFloatingActions(
     productId: String,
     isWishlisted: Boolean, // Thêm trạng thái này
+    hasPriceAlert: Boolean,
     onWishlistClick: () -> Unit,
     onAlertClick: () -> Unit
 ) {
@@ -48,15 +50,15 @@ fun ProductFloatingActions(
         // Nút Báo giá
         FloatingActionButton(
             onClick = onAlertClick,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            containerColor = if (hasPriceAlert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            contentColor = if (hasPriceAlert) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             shape = CircleShape,
             modifier = Modifier
                 .size(56.dp)
                 .shadow(6.dp, CircleShape)
         ) {
             Icon(
-                imageVector = Icons.Default.Notifications, 
+                imageVector = if (hasPriceAlert) Icons.Default.Notifications else Icons.Outlined.NotificationsNone,
                 contentDescription = "Set Price Alert", 
                 modifier = Modifier.size(28.dp)
             )

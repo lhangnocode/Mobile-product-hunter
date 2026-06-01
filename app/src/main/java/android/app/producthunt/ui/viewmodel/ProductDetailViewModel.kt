@@ -2,7 +2,7 @@ package android.app.producthunt.ui.viewmodel
 
 import android.app.producthunt.data.remote.dto.*
 import android.app.producthunt.data.repository.*
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.core.state.UiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +15,7 @@ class ProductDetailViewModel @Inject constructor(
     private val platformProductRepository: PlatformProductRepository,
     private val priceRecordRepository: PriceRecordRepository,
     private val wishlistRepository: WishlistRepository,
+    private val priceAlertRepository: PriceAlertRepository,
 ) : ViewModel() {
 
     private val _listingsState = MutableStateFlow<UiState<List<PlatformListingDto>>>(UiState.Idle)
@@ -26,12 +27,27 @@ class ProductDetailViewModel @Inject constructor(
     private val _analysisState = MutableStateFlow<UiState<PriceAnalysisResponse>>(UiState.Idle)
     val analysisState: StateFlow<UiState<PriceAnalysisResponse>> = _analysisState.asStateFlow()
 
+    private val _priceAlertState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
+    val priceAlertState: StateFlow<UiState<PriceAlertResponse>> = _priceAlertState.asStateFlow()
+
     private val currentProductId = MutableStateFlow<String?>(null)
 
     // Quan sát danh sách yêu thích từ Repository để đồng bộ mọi nơi
     val isWishlisted: StateFlow<Boolean> = combine(
         currentProductId,
         wishlistRepository.wishlist
+    ) { id, state ->
+        if (id == null) return@combine false
+        if (state is UiState.Success) {
+            state.data.any { it.productId == id }
+        } else {
+            false
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val hasPriceAlert: StateFlow<Boolean> = combine(
+        currentProductId,
+        priceAlertRepository.alerts
     ) { id, state ->
         if (id == null) return@combine false
         if (state is UiState.Success) {
@@ -50,12 +66,16 @@ class ProductDetailViewModel @Inject constructor(
             if (wishlistRepository.wishlist.value is UiState.Idle) {
                 wishlistRepository.refresh()
             }
+
+            if (priceAlertRepository.alerts.value is UiState.Idle) {
+                priceAlertRepository.refresh()
+            }
             
             val listingsResult = platformProductRepository.getListingsByProductId(productId)
             _listingsState.value = listingsResult
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
-                val firstListing = listingsResult.data.first()
+                val firstListing = listingsResult.data.bestPricedListing()
                 
                 val currentPrice = firstListing.currentPrice.toDoubleOrNull() ?: 0.0
                 val originalPrice = firstListing.originalPrice?.toDoubleOrNull() ?: currentPrice
@@ -90,4 +110,18 @@ class ProductDetailViewModel @Inject constructor(
             // Repository.add/remove đã tự động refresh flow, Detail sẽ cập nhật theo
         }
     }
+
+    fun createPriceAlert(productId: String, targetPrice: Double) {
+        viewModelScope.launch {
+            _priceAlertState.value = UiState.Loading
+            _priceAlertState.value = priceAlertRepository.create(productId, targetPrice)
+        }
+    }
+
+    fun resetPriceAlertState() {
+        _priceAlertState.value = UiState.Idle
+    }
 }
+
+private fun List<PlatformListingDto>.bestPricedListing(): PlatformListingDto =
+    minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE } ?: first()

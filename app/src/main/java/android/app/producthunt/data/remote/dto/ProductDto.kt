@@ -1,6 +1,7 @@
 package android.app.producthunt.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
+import kotlin.math.roundToInt
 
 data class ProductResponse(
     @SerializedName("id") val id: String?,
@@ -52,6 +53,7 @@ data class SearchCompareResponse(
 
 data class TrendingDealResponse(
     @SerializedName("id") val id: String,
+    @SerializedName("product_id") val productId: String? = null,
     @SerializedName("product_name") val productName: String,
     @SerializedName("main_image_url") val mainImageUrl: String?,
     @SerializedName("current_price") val currentPrice: Double,
@@ -61,3 +63,17 @@ data class TrendingDealResponse(
     @SerializedName("url") val url: String?,
     @SerializedName("in_stock") val inStock: Boolean,
 )
+
+val TrendingDealResponse.detailProductId: String
+    get() = productId ?: id
+
+fun TrendingDealResponse.discountLabel(): String? {
+    val calculatedPercent = originalPrice
+        ?.takeIf { it > currentPrice && it > 0.0 }
+        ?.let { original -> ((original - currentPrice) / original) * 100 }
+
+    val percent = calculatedPercent ?: discountPercent?.takeIf { it > 0.0 }
+    val roundedPercent = percent?.roundToInt()?.takeIf { it > 0 } ?: return null
+
+    return "-$roundedPercent%"
+}

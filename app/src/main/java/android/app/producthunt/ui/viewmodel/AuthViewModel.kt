@@ -1,9 +1,10 @@
 package android.app.producthunt.ui.viewmodel
 
-import android.app.producthunt.data.remote.dto.TokenResponse
 import android.app.producthunt.data.remote.dto.UserResponse
 import android.app.producthunt.data.repository.AuthRepository
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.data.repository.PriceAlertRepository
+import android.app.producthunt.data.repository.WishlistRepository
+import android.app.producthunt.core.state.UiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,10 +17,12 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: AuthRepository,
+    private val wishlistRepository: WishlistRepository,
+    private val priceAlertRepository: PriceAlertRepository,
 ) : ViewModel() {
 
-    private val _loginState = MutableStateFlow<UiState<TokenResponse>>(UiState.Idle)
-    val loginState: StateFlow<UiState<TokenResponse>> = _loginState.asStateFlow()
+    private val _loginState = MutableStateFlow<UiState<UserResponse>>(UiState.Idle)
+    val loginState: StateFlow<UiState<UserResponse>> = _loginState.asStateFlow()
 
     private val _sessionState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
     val sessionState: StateFlow<UiState<Boolean>> = _sessionState.asStateFlow()
@@ -29,6 +32,9 @@ class AuthViewModel @Inject constructor(
 
     private val _startupState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
     val startupState: StateFlow<UiState<Boolean>> = _startupState.asStateFlow()
+
+    private val _currentUserState = MutableStateFlow<UiState<UserResponse>>(UiState.Idle)
+    val currentUserState: StateFlow<UiState<UserResponse>> = _currentUserState.asStateFlow()
 
     private val _forgotPasswordState = MutableStateFlow<UiState<String>>(UiState.Idle)
     val forgotPasswordState: StateFlow<UiState<String>> = _forgotPasswordState.asStateFlow()
@@ -42,14 +48,43 @@ class AuthViewModel @Inject constructor(
     fun restoreSession() {
         viewModelScope.launch {
             _startupState.value = UiState.Loading
-            _startupState.value = repository.restoreSession()
+            when (val result = repository.restoreSession()) {
+                is UiState.Success -> {
+                    val user = result.data
+                    if (user != null) {
+                        _currentUserState.value = UiState.Success(user)
+                        _startupState.value = UiState.Success(true)
+                    } else {
+                        clearUserScopedState()
+                        _startupState.value = UiState.Success(false)
+                    }
+                }
+                is UiState.Error -> {
+                    clearUserScopedState()
+                    _startupState.value = UiState.Success(false)
+                }
+                else -> _startupState.value = UiState.Success(false)
+            }
         }
     }
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _loginState.value = UiState.Loading
-            _loginState.value = repository.login(email, password)
+            clearUserScopedState()
+            when (val result = repository.login(email, password)) {
+                is UiState.Success -> {
+                    _currentUserState.value = UiState.Success(result.data)
+                    _loginState.value = result
+                    _startupState.value = UiState.Success(true)
+                }
+                is UiState.Error -> {
+                    clearUserScopedState()
+                    _loginState.value = result
+                    _startupState.value = UiState.Success(false)
+                }
+                else -> _loginState.value = result
+            }
         }
     }
 
@@ -70,7 +105,14 @@ class AuthViewModel @Inject constructor(
     fun resetPassword(token: String, newPassword: String) {
         viewModelScope.launch {
             _resetPasswordState.value = UiState.Loading
-            _resetPasswordState.value = repository.resetPassword(token, newPassword)
+            val result = repository.resetPassword(token, newPassword)
+            if (result is UiState.Success) {
+                repository.logout()
+                clearUserScopedState()
+                _startupState.value = UiState.Success(false)
+                _sessionState.value = UiState.Success(false)
+            }
+            _resetPasswordState.value = result
         }
     }
 
@@ -78,8 +120,20 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _sessionState.value = UiState.Loading
             _sessionState.value = if (repository.hasValidSession()) {
-                UiState.Success(true)
+                when (val userResult = repository.me()) {
+                    is UiState.Success -> {
+                        _currentUserState.value = userResult
+                        UiState.Success(true)
+                    }
+                    is UiState.Error -> {
+                        repository.logout()
+                        clearUserScopedState()
+                        UiState.Success(false)
+                    }
+                    else -> UiState.Success(false)
+                }
             } else {
+                clearUserScopedState()
                 UiState.Success(false)
             }
         }
@@ -88,8 +142,17 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             repository.logout()
+            clearUserScopedState()
             _loginState.value = UiState.Idle
             _sessionState.value = UiState.Success(false)
+            _startupState.value = UiState.Success(false)
+        }
+    }
+
+    fun loadCurrentUser() {
+        viewModelScope.launch {
+            _currentUserState.value = UiState.Loading
+            _currentUserState.value = repository.me()
         }
     }
 
@@ -111,5 +174,11 @@ class AuthViewModel @Inject constructor(
 
     fun resetResetPasswordState() {
         _resetPasswordState.value = UiState.Idle
+    }
+
+    private fun clearUserScopedState() {
+        _currentUserState.value = UiState.Idle
+        wishlistRepository.clear()
+        priceAlertRepository.clear()
     }
 }

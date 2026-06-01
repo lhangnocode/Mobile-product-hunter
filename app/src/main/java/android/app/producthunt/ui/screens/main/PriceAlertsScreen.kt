@@ -1,19 +1,13 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.domain.UiState
+import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
+import android.app.producthunt.core.state.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
-import android.app.producthunt.ui.theme.ColorBorder
-import android.app.producthunt.ui.theme.ColorDivider
-import android.app.producthunt.ui.theme.ColorOrange
-import android.app.producthunt.ui.theme.ColorSurface
-import android.app.producthunt.ui.theme.ColorText
-import android.app.producthunt.ui.theme.ColorTextSub
 import android.app.producthunt.ui.theme.PHSpacing
-import android.app.producthunt.ui.theme.ColorTrackBg
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
@@ -49,6 +44,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,12 +52,17 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,18 +95,36 @@ fun PriceAlertsScreen(
     onNavigateToHunt: () -> Unit = {},
     onNavigateToDeals: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
+    onProductSelected: (String, String?) -> Unit = { _, _ -> },
     viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
     val alertsState by viewModel.alertsState.collectAsState()
+    val createState by viewModel.createState.collectAsState()
+    val triggerState by viewModel.triggerState.collectAsState()
+    val deleteAllState by viewModel.deleteAllState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val alerts = when (val s = alertsState) {
         is UiState.Success -> s.data.mapIndexed { index, dto ->
+            val currentPrice = PriceAlertStatusMapper.displayCurrentPrice(dto)
+            val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
+            val productName = dto.product?.productName
+                ?: dto.productName
+                ?: "Tracked product"
+            val productDetails = listOfNotNull(
+                dto.product?.brand,
+                dto.product?.category,
+                if (dto.isActive) "Active alert" else "Paused",
+            ).joinToString(" • ")
             PriceAlert(
                 id = index,
-                name = dto.product?.productName ?: dto.productId,
-                subtitle = dto.product?.category ?: "",
-                currentPrice = 0.0,
+                name = productName,
+                subtitle = productDetails.ifBlank { "Product ${dto.productId.take(8)}" },
+                imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
+                currentPrice = currentPrice,
                 targetPrice = dto.targetPrice,
+                statusText = PriceAlertStatusMapper.statusText(dto),
+                targetReached = targetReached,
                 placeholderColor = Color(0xFF1E1E2E),
                 placeholderIcon = Icons.Filled.Headphones,
             )
@@ -122,20 +141,80 @@ fun PriceAlertsScreen(
         AddAlertSheet(
             sheetState = sheetState,
             onDismiss = { showSheet = false },
-            onConfirm = { scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false } },
+            onConfirm = { productId, targetPrice ->
+                viewModel.create(productId, targetPrice)
+                scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
+            },
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
+    LaunchedEffect(createState) {
+        when (val state = createState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar("Price alert saved", duration = SnackbarDuration.Short)
+                viewModel.resetCreateState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetCreateState()
+            }
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(triggerState) {
+        when (val state = triggerState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    state.data.message ?: "Price check started",
+                    duration = SnackbarDuration.Short,
+                )
+                viewModel.resetTriggerState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetTriggerState()
+            }
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(deleteAllState) {
+        when (val state = deleteAllState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data > 0) "Cleared ${state.data} price alerts" else "No price alerts to clear",
+                    duration = SnackbarDuration.Short,
+                )
+                viewModel.resetDeleteAllState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetDeleteAllState()
+            }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
         Column(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(padding),
                 contentPadding = PaddingValues(bottom = 16.dp),
             ) {
-                item { PageHeader(onAddClick = { showSheet = true }) }
+                item {
+                    PageHeader(
+                        isTriggering = triggerState is UiState.Loading,
+                        isClearing = deleteAllState is UiState.Loading,
+                        hasAlerts = alerts.isNotEmpty(),
+                        onAddClick = { showSheet = true },
+                        onTriggerClick = { viewModel.trigger() },
+                        onClearAllClick = { viewModel.deleteAll() },
+                    )
+                }
                 item {
                     Spacer(Modifier.height(20.dp))
                     MasterNotificationsCard(
@@ -148,9 +227,43 @@ fun PriceAlertsScreen(
                     SectionLabel("● ACTIVE PRECISION TRACKING")
                     Spacer(Modifier.height(12.dp))
                 }
-                items(alerts.size) { index ->
-                    AlertCard(alert = alerts[index])
-                    Spacer(Modifier.height(12.dp))
+                when (alertsState) {
+                    is UiState.Loading, UiState.Idle -> item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is UiState.Error -> item {
+                        Text(
+                            text = (alertsState as UiState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        )
+                    }
+                    is UiState.Success -> {
+                        if (alerts.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No active price alerts",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                                )
+                            }
+                        } else {
+                            items(alerts.size) { index ->
+                                val dto = (alertsState as UiState.Success).data[index]
+                                AlertCard(
+                                    alert = alerts[index],
+                                    onDeleteClick = { viewModel.delete(dto.productId) },
+                                    onClick = { onProductSelected(dto.productId, alerts[index].imageUrl) },
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
+                        }
+                    }
                 }
                 item {
                     Spacer(Modifier.height(8.dp))
@@ -159,7 +272,6 @@ fun PriceAlertsScreen(
                     NoScheduledDropsCard()
                 }
             }
-
         }
     }
 }
@@ -212,7 +324,14 @@ private fun TopBar() {
 // ─── Page Header ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun PageHeader(onAddClick: () -> Unit) {
+private fun PageHeader(
+    isTriggering: Boolean,
+    isClearing: Boolean,
+    hasAlerts: Boolean,
+    onAddClick: () -> Unit,
+    onTriggerClick: () -> Unit,
+    onClearAllClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,6 +339,72 @@ private fun PageHeader(onAddClick: () -> Unit) {
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Button(
+            onClick = onClearAllClick,
+            enabled = hasAlerts && !isClearing,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            if (isClearing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onError,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "Clear\nAll",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onError,
+                lineHeight = 16.sp,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Button(
+            onClick = onTriggerClick,
+            enabled = !isTriggering,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            if (isTriggering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onSecondary,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "Run\nCheck",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondary,
+                lineHeight = 16.sp,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
         Button(
             onClick = onAddClick,
             shape = RoundedCornerShape(16.dp),
@@ -397,8 +582,9 @@ private fun NavBarItem(item: NavItem) {
 private fun AddAlertSheet(
     sheetState: SheetState,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
+    onConfirm: (productId: String, targetPrice: Double) -> Unit,
 ) {
+    var productId by remember { mutableStateOf("") }
     var minInput by remember { mutableStateOf("100") }
     var maxInput by remember { mutableStateOf("500") }
     var range by remember { mutableStateOf(100f..500f) }
@@ -423,6 +609,14 @@ private fun AddAlertSheet(
             // Header
             Text("Set Price Range", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
             Text("Alert when price falls within your target", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            OutlinedTextField(
+                value = productId,
+                onValueChange = { productId = it },
+                label = { Text("Product ID") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             // Min / Max input row
             Row(
@@ -501,7 +695,8 @@ private fun AddAlertSheet(
 
             // Confirm button
             Button(
-                onClick = onConfirm,
+                onClick = { onConfirm(productId.trim(), range.endInclusive.toDouble()) },
+                enabled = productId.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
