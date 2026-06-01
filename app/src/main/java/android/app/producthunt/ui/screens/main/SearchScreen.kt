@@ -394,7 +394,7 @@ fun AgentProductSummaryListMessage(
 fun AgentTrendingSummaryMessage(message: ChatMessage) {
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
-        val title = if (message.text.isNotBlank()) message.text else "Deals hot hôm nay"
+        val title = message.text.ifBlank { "Deals hot hôm nay" }
         Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
         Spacer(Modifier.height(12.dp))
 
@@ -804,9 +804,7 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
         color = Color.Transparent
     ) {
         Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .navigationBarsPadding()
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             TextField(
                 value = value,
