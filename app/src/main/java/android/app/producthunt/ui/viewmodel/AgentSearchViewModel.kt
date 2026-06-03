@@ -10,8 +10,11 @@ import android.app.producthunt.core.agent.AgentSearchResult
 import android.app.producthunt.core.agent.AgentTrendingItemSummary
 import android.app.producthunt.core.agent.AgentTrendingResult
 import android.app.producthunt.core.log.ILog
+import android.app.producthunt.data.local.LanguageMode
+import android.app.producthunt.data.local.ThemePreferencesDataStore
 import android.app.producthunt.data.local.db.entity.AgentMessageRole
 import android.app.producthunt.data.repository.AgentConversationRepository
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.screens.main.ChatMessage
 import android.app.producthunt.ui.state.AgentSearchUiState
 import androidx.lifecycle.ViewModel
@@ -19,8 +22,10 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,8 +33,14 @@ import javax.inject.Inject
 @HiltViewModel
 class AgentSearchViewModel @Inject constructor(
     private val conversationRepository: AgentConversationRepository,
+    themePreferences: ThemePreferencesDataStore,
 ) : ViewModel() {
     private val gson = Gson()
+    private val languageMode = themePreferences.languageMode.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LanguageMode.VIETNAMESE,
+    )
 
     private val _uiState = MutableStateFlow(AgentSearchUiState())
     val uiState: StateFlow<AgentSearchUiState> = _uiState.asStateFlow()
@@ -53,7 +64,7 @@ class AgentSearchViewModel @Inject constructor(
                     }
 
                     override fun onStarted() {
-                        updateMessage(responseIndex, "Thinking...", isLoading = true)
+                        updateMessage(responseIndex, ifEnglish("Thinking...", "Đang suy nghĩ..."), isLoading = true)
                     }
 
                     override fun onToolStarted(name: String, input: String) {
@@ -165,7 +176,10 @@ class AgentSearchViewModel @Inject constructor(
             val products = result.products.orEmpty()
             result.takeIf { products.isNotEmpty() || it.error != null }?.let {
                 ChatMessage(
-                    text = it.error ?: "Tôi tìm thấy ${it.totalResults} sản phẩm:",
+                    text = it.error ?: ifEnglish(
+                        "I found ${it.totalResults} products:",
+                        "Tôi tìm thấy ${it.totalResults} sản phẩm:",
+                    ),
                     isUser = false,
                     agentProductList = products,
                     showAgentHeader = true,
@@ -179,7 +193,7 @@ class AgentSearchViewModel @Inject constructor(
             val items = result.items.orEmpty()
             result.takeIf { items.isNotEmpty() || it.error != null }?.let {
                 ChatMessage(
-                    text = it.error ?: "Deals hot hôm nay:",
+                    text = it.error ?: ifEnglish("Today hot deals:", "Deals hot hôm nay:"),
                     isUser = false,
                     agentTrendingItems = items,
                     showAgentHeader = true,
@@ -226,40 +240,63 @@ class AgentSearchViewModel @Inject constructor(
     private fun summarizeProductListingsResult(result: AgentProductListingsResult): String {
         result.error?.let { return it }
         val listings = result.listings.orEmpty()
-        if (listings.isEmpty()) return "Không tìm thấy listing cho sản phẩm này."
+        if (listings.isEmpty()) return ifEnglish(
+            "No listings were found for this product.",
+            "Không tìm thấy listing cho sản phẩm này.",
+        )
 
         val best = listings.minByOrNull { it.currentPrice ?: Double.MAX_VALUE } ?: listings.first()
-        val price = best.currentPrice?.formatVnd() ?: "chưa có giá"
-        return "Tôi tìm thấy ${result.totalResults} listing. Giá tốt nhất hiện là $price tại ${best.platformName}."
+        val price = best.currentPrice?.formatCurrentPrice() ?: ifEnglish("no price yet", "chưa có giá")
+        return ifEnglish(
+            "I found ${result.totalResults} listings. The current best price is $price at ${best.platformName}.",
+            "Tôi tìm thấy ${result.totalResults} listing. Giá tốt nhất hiện là $price tại ${best.platformName}.",
+        )
     }
 
     private fun summarizePriceAnalysisResult(result: AgentPriceAnalysisResult): String {
         result.error?.let { return it }
-        val analysis = result.analysis ?: return "Chưa có dữ liệu phân tích giá."
-        val label = analysis.label ?: analysis.status ?: "chưa rõ mức độ tốt"
-        val low = analysis.lowestEverPrice?.let { ", thấp nhất từng ghi nhận ${it.formatVnd()}" }.orEmpty()
-        return "Giá hiện tại ${analysis.currentPrice.formatVnd()} được đánh giá: $label$low."
+        val analysis = result.analysis ?: return ifEnglish(
+            "No price analysis data is available.",
+            "Chưa có dữ liệu phân tích giá.",
+        )
+        val label = analysis.label ?: analysis.status ?: ifEnglish("unclear", "chưa rõ mức độ tốt")
+        val low = analysis.lowestEverPrice?.let {
+            ifEnglish(
+                ", lowest ever ${it.formatCurrentPrice()}",
+                ", thấp nhất từng ghi nhận ${it.formatCurrentPrice()}",
+            )
+        }.orEmpty()
+        return ifEnglish(
+            "The current price ${analysis.currentPrice.formatCurrentPrice()} is rated: $label$low.",
+            "Giá hiện tại ${analysis.currentPrice.formatCurrentPrice()} được đánh giá: $label$low.",
+        )
     }
 
     private fun summarizePriceRecordsResult(result: AgentPriceRecordsResult): String {
         result.error?.let { return it }
-        val latest = result.latest?.price?.formatVnd() ?: "chưa có giá mới nhất"
-        val low = result.lowestPrice?.formatVnd() ?: "chưa rõ"
-        val high = result.highestPrice?.formatVnd() ?: "chưa rõ"
-        return "Lịch sử giá có ${result.totalRecords} bản ghi. Giá mới nhất $latest, thấp nhất $low, cao nhất $high."
+        val latest = result.latest?.price?.formatCurrentPrice() ?: ifEnglish("no latest price yet", "chưa có giá mới nhất")
+        val low = result.lowestPrice?.formatCurrentPrice() ?: ifEnglish("unknown", "chưa rõ")
+        val high = result.highestPrice?.formatCurrentPrice() ?: ifEnglish("unknown", "chưa rõ")
+        return ifEnglish(
+            "Price history has ${result.totalRecords} records. Latest price $latest, lowest $low, highest $high.",
+            "Lịch sử giá có ${result.totalRecords} bản ghi. Giá mới nhất $latest, thấp nhất $low, cao nhất $high.",
+        )
     }
 
-    private fun Double.formatVnd(): String =
-        "%,.0f đ".format(this)
+    private fun Double.formatCurrentPrice(): String =
+        formatPriceFromVnd(this, languageMode.value)
+
+    private fun ifEnglish(english: String, vietnamese: String): String =
+        if (languageMode.value == LanguageMode.ENGLISH) english else vietnamese
 
     private fun String.toToolStatusText(): String =
         when (this) {
-            "searchProducts" -> "Searching products..."
-            "getProductDetail" -> "Getting product detail..."
-            "getTrendingDeals" -> "Checking trending deals..."
-            "getProductPriceRecords" -> "Checking price records..."
-            "analyzeListingPrice" -> "Analyzing listing price..."
-            else -> "Using tool: $this..."
+            "searchProducts" -> ifEnglish("Searching products...", "Đang tìm sản phẩm...")
+            "getProductDetail" -> ifEnglish("Getting product detail...", "Đang lấy chi tiết sản phẩm...")
+            "getTrendingDeals" -> ifEnglish("Checking trending deals...", "Đang kiểm tra deal trending...")
+            "getProductPriceRecords" -> ifEnglish("Checking price records...", "Đang kiểm tra lịch sử giá...")
+            "analyzeListingPrice" -> ifEnglish("Analyzing listing price...", "Đang phân tích giá listing...")
+            else -> ifEnglish("Using tool: $this...", "Đang dùng công cụ: $this...")
         }
 
     private fun ChatMessage.hasSameAgentPayload(other: ChatMessage): Boolean =

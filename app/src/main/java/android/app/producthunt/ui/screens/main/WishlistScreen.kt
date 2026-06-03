@@ -2,6 +2,9 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.WishlistResponse
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
@@ -56,6 +59,7 @@ fun WishlistScreen(
     modifier: Modifier = Modifier,
     wishlistViewModel: WishlistViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
 
     Surface(
@@ -65,14 +69,14 @@ fun WishlistScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Header for Wishlist
             Text(
-                text = "Saved Products",
+                text = strings.wishlist,
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             if (wishlistState is UiState.Success && (wishlistState as UiState.Success).data.isNotEmpty()) {
                 TextButton(onClick = { wishlistViewModel.removeAll() }) {
-                    Text("Xóa tất cả", color = MaterialTheme.colorScheme.error)
+                    Text(strings.clearAll.replace("\n", " "), color = MaterialTheme.colorScheme.error)
                 }
             }
             
@@ -87,6 +91,8 @@ private fun SavedProductsContent(
     navController: NavController,
     viewModel: WishlistViewModel
 ) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     when (state) {
         is UiState.Loading, UiState.Idle -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -110,12 +116,12 @@ private fun SavedProductsContent(
                 ) {
                     items(state.data) { item ->
                         val p = item.product
-                        val name = p?.productName ?: item.productName ?: "Product"
+                        val name = p?.productName ?: item.productName ?: strings.trackedProduct
                         val image = p?.mainImageUrl ?: item.mainImageUrl
                         
                         WishlistProductCard(
                             title = name,
-                            currentPrice = item.currentPrice?.let { "%,.0f đ".format(it) } ?: "Tracking",
+                            currentPrice = item.currentPrice?.let { formatPriceFromVnd(it, languageMode) } ?: strings.checking,
                             imageUrl = image,
                             onProductClick = {
                                 val encodedImage = image?.let {
@@ -190,6 +196,7 @@ fun WishlistProductCard(
 
 @Composable
 private fun EmptyWishlistState() {
+    val strings = LocalAppStrings.current
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
@@ -199,7 +206,7 @@ private fun EmptyWishlistState() {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Your wishlist is empty", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Text(text = strings.emptyWishlist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
         }
     }
 }

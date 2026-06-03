@@ -2,9 +2,13 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PH_Primary
@@ -29,6 +33,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     trendingViewModel: TrendingViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -41,12 +47,13 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             item {
-                SectionHeader(title = "Trending Deals", onActionClick = { /* View more logic */ })
+                SectionHeader(title = strings.trendingDeals, onActionClick = { /* View more logic */ })
             }
             
             item {
                 ProductListSection(
                     trendingState = trendingState,
+                    languageMode = languageMode,
                     wishlistedIds = wishlistedIds,
                     onProductClick = { deal ->
                         val encodedImage = deal.mainImageUrl?.let { Uri.encode(it) }
@@ -67,6 +74,7 @@ fun HomeScreen(
 
 @Composable
 private fun SectionHeader(title: String, onActionClick: () -> Unit) {
+    val strings = LocalAppStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -76,7 +84,7 @@ private fun SectionHeader(title: String, onActionClick: () -> Unit) {
     ) {
         Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         TextButton(onClick = onActionClick) {
-            Text("See all", color = PH_Primary)
+            Text(strings.seeAll, color = PH_Primary)
         }
     }
 }
@@ -84,6 +92,7 @@ private fun SectionHeader(title: String, onActionClick: () -> Unit) {
 @Composable
 private fun ProductListSection(
     trendingState: UiState<List<TrendingDealResponse>>,
+    languageMode: LanguageMode,
     wishlistedIds: Set<String>,
     onProductClick: (TrendingDealResponse) -> Unit,
     onWishlistClick: (String) -> Unit,
@@ -103,14 +112,14 @@ private fun ProductListSection(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowDeals.forEach { deal ->
-                            val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
-                            val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                            val currentPriceLabel = formatPriceFromVnd(deal.currentPrice, languageMode)
+                            val originalPriceLabel = deal.originalPrice?.let { formatPriceFromVnd(it, languageMode) }
                             val discountLabel = deal.discountLabel()
 
                             ProductGridCard(
                                 title = deal.productName,
                                 imageUrl = deal.mainImageUrl,
-                                brand = "Hàng chính hãng",
+                                brand = null,
                                 currentPrice = currentPriceLabel,
                                 originalPrice = originalPriceLabel,
                                 discount = discountLabel,

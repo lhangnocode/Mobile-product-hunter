@@ -1,5 +1,6 @@
 package android.app.producthunt
 
+import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.local.ThemeMode
 import android.app.producthunt.data.remote.dto.UserResponse
 import android.app.producthunt.ui.components.UserAvatar
@@ -10,6 +11,9 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.ui.i18n.AppStrings
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.ProductHunterLocale
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
@@ -62,6 +66,7 @@ class MainActivity : ComponentActivity() {
             val focusManager = LocalFocusManager.current
             val keyboardController = LocalSoftwareKeyboardController.current
             val themeMode by themeViewModel.themeMode.collectAsState()
+            val languageMode by themeViewModel.languageMode.collectAsState()
             val systemDarkTheme = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> systemDarkTheme
@@ -70,6 +75,8 @@ class MainActivity : ComponentActivity() {
             }
 
             AndroidAppProductHuntTheme(darkTheme = darkTheme) {
+                ProductHunterLocale(languageMode = languageMode) {
+                val strings = LocalAppStrings.current
                 val startupState by authViewModel.startupState.collectAsState()
                 val currentUserState by authViewModel.currentUserState.collectAsState()
                 val currentUser = (currentUserState as? UiState.Success)?.data
@@ -80,7 +87,7 @@ class MainActivity : ComponentActivity() {
 
                 if (startupState is UiState.Idle || startupState is UiState.Loading) {
                     StartupLoadingScreen()
-                    return@AndroidAppProductHuntTheme
+                    return@ProductHunterLocale
                 }
 
                 val isAuthenticated = (startupState as? UiState.Success)?.data == true
@@ -88,7 +95,7 @@ class MainActivity : ComponentActivity() {
                 val startDestination = if (isAuthenticated) Route.SEARCH else Route.LOGIN
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route?.baseRoute()
-                val chrome = currentRoute.toChromeConfig()
+                val chrome = currentRoute.toChromeConfig(strings)
                 val childScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -104,8 +111,10 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppDrawerContent(
                                 themeMode = themeMode,
+                                languageMode = languageMode,
                                 currentUser = currentUser,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
+                                onLanguageChange = { themeViewModel.setLanguageMode(it) },
                                 onNewSearch = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.SEARCH)
@@ -181,22 +190,27 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDrawerContent(
     themeMode: ThemeMode,
+    languageMode: LanguageMode,
     currentUser: UserResponse?,
     onThemeChange: (ThemeMode) -> Unit,
+    onLanguageChange: (LanguageMode) -> Unit,
     onNewSearch: () -> Unit,
     onHistoryClick: () -> Unit,
     onManageAccount: () -> Unit,
     onAppInformation: () -> Unit,
     onAgentManagement: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -216,7 +230,7 @@ fun AppDrawerContent(
         }
 
         NavigationDrawerItem(
-            label = { Text("New Search", fontWeight = FontWeight.Medium) },
+            label = { Text(strings.newSearch, fontWeight = FontWeight.Medium) },
             selected = false,
             onClick = onNewSearch,
             icon = { CustomIcon(PHIcons.Add, contentDescription = null) },
@@ -225,7 +239,7 @@ fun AppDrawerContent(
 
         Spacer(Modifier.height(8.dp))
 
-        Text("History", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text(strings.history, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         val recentHistory = listOf("Compare Samsung Tab S10 vs iPad Mini", "Best laptop for AI under 20M", "iPhone 15 vs Galaxy S24")
         recentHistory.forEach { history ->
@@ -243,7 +257,7 @@ fun AppDrawerContent(
         Text("Agent", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         NavigationDrawerItem(
-            label = { Text("AI Agent") },
+            label = { Text(strings.aiAgent) },
             selected = false,
             onClick = onAgentManagement,
             icon = { CustomIcon(Icons.Default.AutoAwesome, contentDescription = null) },
@@ -252,7 +266,7 @@ fun AppDrawerContent(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
 
-        Text("Appearance", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text(strings.appearance, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -264,15 +278,41 @@ fun AppDrawerContent(
         ) {
             CustomIcon(if (themeMode == ThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = null)
             Spacer(Modifier.width(12.dp))
-            Text("Dark Mode", modifier = Modifier.weight(1f))
+            Text(strings.darkMode, modifier = Modifier.weight(1f))
             Switch(
                 checked = themeMode == ThemeMode.DARK,
                 onCheckedChange = { onThemeChange(if (it) ThemeMode.DARK else ThemeMode.LIGHT) }
             )
         }
 
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .padding(12.dp)
+        ) {
+            CustomIcon(Icons.Default.Language, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Text(strings.language, modifier = Modifier.weight(1f))
+            SingleChoiceSegmentedButtonRow {
+                LanguageMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = languageMode == mode,
+                        onClick = { onLanguageChange(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = LanguageMode.entries.size,
+                        ),
+                    ) {
+                        Text(if (mode == LanguageMode.ENGLISH) "EN" else "VI")
+                    }
+                }
+            }
+        }
+
         NavigationDrawerItem(
-            label = { Text("App Information") },
+            label = { Text(strings.appInformation) },
             selected = false,
             onClick = { onAppInformation() },
             icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
@@ -300,14 +340,14 @@ fun AppDrawerContent(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        currentUser?.fullName?.takeIf { it.isNotBlank() } ?: currentUser?.email ?: "Product Hunter User",
+                        currentUser?.fullName?.takeIf { it.isNotBlank() } ?: currentUser?.email ?: strings.productHunterUser,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
+                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: strings.freePlan,
                         style = MaterialTheme.typography.labelSmall,
                         color = PH_Primary,
                     )
@@ -350,47 +390,47 @@ private data class ChromeConfig(
     val showSearchAction: Boolean = false,
 )
 
-private fun String?.toChromeConfig(): ChromeConfig =
+private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
     when (this) {
         Route.FEED -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Feed",
+            title = strings.feed,
             showBottomBar = true,
         )
         Route.SEARCH -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Search",
+            title = strings.search,
             showBottomBar = true,
         )
         Route.WISHLIST -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Wishlist",
+            title = strings.wishlist,
             showBottomBar = true,
         )
         Route.ALERTS -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Price Alerts",
+            title = strings.priceAlerts,
             showBottomBar = true,
         )
         Route.PROFILE -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "Profile",
+            title = strings.profile,
         )
         Route.SEARCH_HISTORY -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "History",
+            title = strings.history,
         )
         Route.PRODUCT_DETAIL -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "Details",
+            title = strings.details,
         )
         Route.APP_INFORMATION -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "App Information",
+            title = strings.appInformation,
         )
         Route.AGENT_MANAGEMENT -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "AI Agent",
+            title = strings.aiAgent,
         )
         else -> ChromeConfig()
     }

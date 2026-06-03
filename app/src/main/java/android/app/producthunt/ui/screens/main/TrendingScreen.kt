@@ -4,6 +4,8 @@ import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.theme.PH_Primary
@@ -41,6 +43,7 @@ fun TrendingScreen(
 ) {
     val trendingState by viewModel.trendingState.collectAsState()
     val wishlistedIds by viewModel.wishlistedIds.collectAsState()
+    val languageMode = LocalLanguageMode.current
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -95,8 +98,8 @@ fun TrendingScreen(
                         ) {
                             items(state.data) { deal ->
                                 val discountLabel = deal.discountLabel()
-                                val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
-                                val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                                val currentPriceLabel = formatPriceFromVnd(deal.currentPrice, languageMode)
+                                val originalPriceLabel = deal.originalPrice?.let { formatPriceFromVnd(it, languageMode) }
                                 
                                 ProductGridCard(
                                     title = deal.productName,

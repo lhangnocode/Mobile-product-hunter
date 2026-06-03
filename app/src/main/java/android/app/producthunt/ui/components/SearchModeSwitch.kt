@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.components
 
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.PH_Primary
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ fun SearchModeSwitch(
     onModeChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val modes = listOf("Search", "AI Agent")
     val selectedIndex = modes.indexOf(selectedMode).coerceAtLeast(0)
     
@@ -92,7 +94,7 @@ fun SearchModeSwitch(
                                 Spacer(Modifier.width(6.dp))
                             }
                             Text(
-                                text = mode,
+                                text = if (mode == "AI Agent") strings.aiAgent else strings.search,
                                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 13.sp
