@@ -1,6 +1,9 @@
 package android.app.producthunt.ui.components.card
 
 import android.app.producthunt.model.PriceAlert
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -50,6 +53,7 @@ fun AlertCard(
     onDeleteClick: () -> Unit = {},
     onClick: () -> Unit = {},
 ) {
+    val strings = LocalAppStrings.current
     val currentPrice = alert.currentPrice
     val progress = if (currentPrice != null && currentPrice > 0.0) {
         ((currentPrice - alert.targetPrice) / currentPrice)
@@ -113,8 +117,8 @@ fun AlertCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                PriceColumn(label = "CURRENT", price = currentPrice, highlight = false)
-                PriceColumn(label = "TARGET", price = alert.targetPrice, highlight = true)
+                PriceColumn(label = strings.current, price = currentPrice, highlight = false)
+                PriceColumn(label = strings.target, price = alert.targetPrice, highlight = true)
             }
 
             Spacer(Modifier.height(10.dp))
@@ -165,6 +169,8 @@ private fun ProductVisual(imageUrl: String?, color: Color, icon: ImageVector) {
 
 @Composable
 private fun PriceColumn(label: String, price: Double?, highlight: Boolean) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     Column {
         Text(
             text = label,
@@ -175,7 +181,7 @@ private fun PriceColumn(label: String, price: Double?, highlight: Boolean) {
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            text = price?.let { "%,.0f đ".format(it) } ?: "Checking",
+            text = price?.let { formatPriceFromVnd(it, languageMode) } ?: strings.checking,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,

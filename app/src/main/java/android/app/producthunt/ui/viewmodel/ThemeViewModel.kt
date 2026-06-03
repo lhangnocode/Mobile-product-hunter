@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.viewmodel
 
+import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.local.ThemeMode
 import android.app.producthunt.data.local.ThemePreferencesDataStore
 import androidx.lifecycle.ViewModel
@@ -22,6 +23,12 @@ class ThemeViewModel @Inject constructor(
         initialValue = ThemeMode.SYSTEM,
     )
 
+    val languageMode: StateFlow<LanguageMode> = themePreferences.languageMode.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LanguageMode.VIETNAMESE,
+    )
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             themePreferences.setThemeMode(mode)
@@ -30,5 +37,11 @@ class ThemeViewModel @Inject constructor(
 
     fun setDarkMode(enabled: Boolean) {
         setThemeMode(if (enabled) ThemeMode.DARK else ThemeMode.LIGHT)
+    }
+
+    fun setLanguageMode(mode: LanguageMode) {
+        viewModelScope.launch {
+            themePreferences.setLanguageMode(mode)
+        }
     }
 }

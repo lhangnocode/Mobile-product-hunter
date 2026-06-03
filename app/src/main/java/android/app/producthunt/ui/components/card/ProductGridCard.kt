@@ -96,17 +96,18 @@ fun ProductGridCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Brand Label
-            Text(
-                text = brand ?: "Hàng chính hãng",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (!brand.isNullOrBlank()) {
+                Text(
+                    text = brand,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
+            }
 
             // Product Name
             Text(

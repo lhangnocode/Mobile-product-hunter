@@ -1,5 +1,6 @@
 package android.app.producthunt.ui.components.appbar
 
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.TopLevelRoutes
 import android.app.producthunt.ui.navigation.baseRouteOrNull
@@ -21,7 +22,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
@@ -59,14 +59,13 @@ private fun MainNavBarContent(
     isSelected: (Set<String>) -> Boolean,
     onItemClick: (String) -> Unit
 ) {
-    val items = remember {
-        listOf(
-            BottomNavItem(Route.FEED, "Feed", PHIcons.Trending),
-            BottomNavItem(Route.SEARCH, "Search", PHIcons.Search),
-            BottomNavItem(Route.WISHLIST, "Wishlist", PHIcons.WishlistOutlined),
-            BottomNavItem(Route.ALERTS, "Alerts", PHIcons.NotificationsOutlined),
-        )
-    }
+    val strings = LocalAppStrings.current
+    val items = listOf(
+        BottomNavItem(Route.FEED, strings.feed, PHIcons.Trending),
+        BottomNavItem(Route.SEARCH, strings.search, PHIcons.Search),
+        BottomNavItem(Route.WISHLIST, strings.wishlist, PHIcons.WishlistOutlined),
+        BottomNavItem(Route.ALERTS, strings.alerts, PHIcons.NotificationsOutlined),
+    )
 
     val duration = 220
     val colorScheme = MaterialTheme.colorScheme

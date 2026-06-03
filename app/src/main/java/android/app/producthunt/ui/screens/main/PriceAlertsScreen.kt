@@ -4,6 +4,7 @@ import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
@@ -30,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Menu
@@ -60,19 +60,16 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,7 +82,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import kotlinx.coroutines.launch
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +94,7 @@ fun PriceAlertsScreen(
     onProductSelected: (String, String?) -> Unit = { _, _ -> },
     viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     val alertsState by viewModel.alertsState.collectAsState()
     val createState by viewModel.createState.collectAsState()
     val triggerState by viewModel.triggerState.collectAsState()
@@ -110,20 +107,20 @@ fun PriceAlertsScreen(
             val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
             val productName = dto.product?.productName
                 ?: dto.productName
-                ?: "Tracked product"
+                ?: strings.trackedProduct
             val productDetails = listOfNotNull(
                 dto.product?.brand,
                 dto.product?.category,
-                if (dto.isActive) "Active alert" else "Paused",
+                if (dto.isActive) strings.activeAlert else strings.paused,
             ).joinToString(" • ")
             PriceAlert(
                 id = index,
                 name = productName,
-                subtitle = productDetails.ifBlank { "Product ${dto.productId.take(8)}" },
+                subtitle = productDetails.ifBlank { strings.productFallback(dto.productId) },
                 imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
                 currentPrice = currentPrice,
                 targetPrice = dto.targetPrice,
-                statusText = PriceAlertStatusMapper.statusText(dto),
+                statusText = if (targetReached) strings.targetReached else strings.waitingForPriceDrop,
                 targetReached = targetReached,
                 placeholderColor = Color(0xFF1E1E2E),
                 placeholderIcon = Icons.Filled.Headphones,
@@ -133,25 +130,10 @@ fun PriceAlertsScreen(
     }
 
     var notificationsEnabled by remember { mutableStateOf(true) }
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
-    if (showSheet) {
-        AddAlertSheet(
-            sheetState = sheetState,
-            onDismiss = { showSheet = false },
-            onConfirm = { productId, targetPrice ->
-                viewModel.create(productId, targetPrice)
-                scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
-            },
-        )
-    }
-
     LaunchedEffect(createState) {
         when (val state = createState) {
             is UiState.Success -> {
-                snackbarHostState.showSnackbar("Price alert saved", duration = SnackbarDuration.Short)
+                snackbarHostState.showSnackbar(strings.priceAlertSaveSuccess, duration = SnackbarDuration.Short)
                 viewModel.resetCreateState()
             }
             is UiState.Error -> {
@@ -166,7 +148,7 @@ fun PriceAlertsScreen(
         when (val state = triggerState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    state.data.message ?: "Price check started",
+                    state.data.message ?: strings.priceCheckStarted,
                     duration = SnackbarDuration.Short,
                 )
                 viewModel.resetTriggerState()
@@ -183,7 +165,7 @@ fun PriceAlertsScreen(
         when (val state = deleteAllState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    if (state.data > 0) "Cleared ${state.data} price alerts" else "No price alerts to clear",
+                    if (state.data > 0) strings.clearedAlerts(state.data) else strings.noAlertsToClear,
                     duration = SnackbarDuration.Short,
                 )
                 viewModel.resetDeleteAllState()
@@ -210,7 +192,6 @@ fun PriceAlertsScreen(
                         isTriggering = triggerState is UiState.Loading,
                         isClearing = deleteAllState is UiState.Loading,
                         hasAlerts = alerts.isNotEmpty(),
-                        onAddClick = { showSheet = true },
                         onTriggerClick = { viewModel.trigger() },
                         onClearAllClick = { viewModel.deleteAll() },
                     )
@@ -224,7 +205,7 @@ fun PriceAlertsScreen(
                     Spacer(Modifier.height(24.dp))
                 }
                 item {
-                    SectionLabel("● ACTIVE PRECISION TRACKING")
+                    SectionLabel(strings.activePrecisionTracking)
                     Spacer(Modifier.height(12.dp))
                 }
                 when (alertsState) {
@@ -247,7 +228,7 @@ fun PriceAlertsScreen(
                         if (alerts.isEmpty()) {
                             item {
                                 Text(
-                                    text = "No active price alerts",
+                                    text = strings.noActivePriceAlerts,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                                 )
@@ -267,7 +248,7 @@ fun PriceAlertsScreen(
                 }
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionLabel("◌ UPCOMING ALERTS")
+                    SectionLabel(strings.upcomingAlerts)
                     Spacer(Modifier.height(12.dp))
                     NoScheduledDropsCard()
                 }
@@ -328,10 +309,10 @@ private fun PageHeader(
     isTriggering: Boolean,
     isClearing: Boolean,
     hasAlerts: Boolean,
-    onAddClick: () -> Unit,
     onTriggerClick: () -> Unit,
     onClearAllClick: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -362,7 +343,7 @@ private fun PageHeader(
             }
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "Clear\nAll",
+                text = strings.clearAll,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onError,
@@ -395,7 +376,7 @@ private fun PageHeader(
             }
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "Run\nCheck",
+                text = strings.runCheck,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSecondary,
@@ -403,35 +384,6 @@ private fun PageHeader(
             )
         }
 
-        Spacer(Modifier.width(12.dp))
-
-        Button(
-            onClick = onAddClick,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            modifier = Modifier.shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "Add New\nAlert",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                lineHeight = 16.sp,
-            )
-        }
     }
 }
 
@@ -453,6 +405,7 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun NoScheduledDropsCard() {
+    val strings = LocalAppStrings.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -483,14 +436,14 @@ private fun NoScheduledDropsCard() {
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "No Scheduled Drops",
+                text = strings.noScheduledDrops,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "You don't have any seasonal or recurring alerts set up. Track historical sales to anticipate the next big dip.",
+                text = strings.noScheduledDropsDescription,
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 19.sp,
@@ -498,7 +451,7 @@ private fun NoScheduledDropsCard() {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Browse Price History Trends",
+                text = strings.browsePriceHistoryTrends,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,

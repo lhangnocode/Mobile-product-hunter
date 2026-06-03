@@ -23,12 +23,23 @@ enum class ThemeMode {
     }
 }
 
+enum class LanguageMode {
+    ENGLISH,
+    VIETNAMESE;
+
+    companion object {
+        fun from(value: String?): LanguageMode =
+            entries.firstOrNull { it.name == value } ?: VIETNAMESE
+    }
+}
+
 @Singleton
 class ThemePreferencesDataStore @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     companion object {
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        private val KEY_LANGUAGE_MODE = stringPreferencesKey("language_mode")
     }
 
     val themeMode: Flow<ThemeMode> =
@@ -36,9 +47,20 @@ class ThemePreferencesDataStore @Inject constructor(
             ThemeMode.from(prefs[KEY_THEME_MODE])
         }
 
+    val languageMode: Flow<LanguageMode> =
+        context.themeDataStore.data.map { prefs ->
+            LanguageMode.from(prefs[KEY_LANGUAGE_MODE])
+        }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         context.themeDataStore.edit { prefs ->
             prefs[KEY_THEME_MODE] = mode.name
+        }
+    }
+
+    suspend fun setLanguageMode(mode: LanguageMode) {
+        context.themeDataStore.edit { prefs ->
+            prefs[KEY_LANGUAGE_MODE] = mode.name
         }
     }
 }

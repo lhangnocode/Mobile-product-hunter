@@ -7,6 +7,9 @@ import android.app.producthunt.data.remote.dto.ProductResponse
 import android.app.producthunt.data.remote.dto.UserResponse
 import android.app.producthunt.ui.components.SearchModeSwitch
 import android.app.producthunt.ui.components.UserAvatar
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.AgentSearchViewModel
@@ -52,6 +55,7 @@ fun SearchScreen(
     viewModel: ProductViewModel = hiltViewModel(),
     agentViewModel: AgentSearchViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     var searchQuery by remember { mutableStateOf(initialQuery ?: "") }
     var searchMode by remember { mutableStateOf("Search") }
     val focusManager = LocalFocusManager.current
@@ -78,7 +82,7 @@ fun SearchScreen(
                 searchMessages.removeAt(searchMessages.lastIndex)
             }
             searchMessages.add(ChatMessage(
-                text = "Tôi tìm thấy ${response.totalResults} sản phẩm cho bạn:",
+                text = strings.searchResultsFound(response.totalResults),
                 isUser = false,
                 isProductList = true,
                 productList = response.data,
@@ -89,7 +93,7 @@ fun SearchScreen(
                 searchMessages.removeAt(searchMessages.lastIndex)
             }
             searchMessages.add(ChatMessage(
-                text = "Lỗi khi tìm kiếm: ${(searchState as UiState.Error).message}",
+                text = strings.searchError((searchState as UiState.Error).message),
                 isUser = false,
                 showAgentHeader = false
             ))
@@ -217,14 +221,21 @@ data class ChatMessage(
     val showAgentHeader: Boolean = true
 )
 
+private data class SearchSuggestion(
+    val title: String,
+    val description: String,
+    val query: String,
+)
+
 @Composable
 fun DiscoveryLanding(
     currentUser: UserResponse?,
     onSuggestionClick: (String) -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     val displayName = currentUser?.fullName?.takeIf { it.isNotBlank() }
         ?: currentUser?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
-        ?: "there"
+        ?: strings.fallbackUserName
 
     Column(
         modifier = Modifier
@@ -240,7 +251,7 @@ fun DiscoveryLanding(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Hello, $displayName",
+            text = strings.greeting(displayName),
             style = MaterialTheme.typography.displaySmall.copy(
                 fontWeight = FontWeight.ExtraBold,
                 brush = Brush.linearGradient(GreetingGradient)
@@ -249,7 +260,7 @@ fun DiscoveryLanding(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Search for tech products or ask the AI agent\nto help you find the best deals and\ncomparisons.",
+            text = strings.searchLandingSubtitle,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
@@ -260,10 +271,10 @@ fun DiscoveryLanding(
         
         // 2x2 Grid for Suggestions
         val suggestions = listOf(
-            "So sánh Samsung Tab S10 vs iPad Mini",
-            "Laptop Gaming dưới 20M",
-            "iPhone 15 vs Galaxy S24",
-            "Deals hot hôm nay"
+            SearchSuggestion(strings.suggestionCompareTitle, strings.suggestionCompareDescription, strings.suggestionCompareQuery),
+            SearchSuggestion(strings.suggestionGamingTitle, strings.suggestionGamingDescription, strings.suggestionGamingQuery),
+            SearchSuggestion(strings.suggestionPhoneTitle, strings.suggestionPhoneDescription, strings.suggestionPhoneQuery),
+            SearchSuggestion(strings.suggestionDealsTitle, strings.suggestionDealsDescription, strings.suggestionDealsQuery),
         )
         
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -274,19 +285,16 @@ fun DiscoveryLanding(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(90.dp)
-                                .clickable { onSuggestionClick(suggestion) },
+                                .clickable { onSuggestionClick(suggestion.query) },
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             shape = RoundedCornerShape(16.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopStart) {
                                 Column {
-                                    val title = if (suggestion.startsWith("So sánh")) "So sánh" else suggestion.split(" ").take(2).joinToString(" ")
-                                    val desc = if (suggestion.startsWith("So sánh")) suggestion.removePrefix("So sánh ") else suggestion.split(" ").drop(2).joinToString(" ")
-                                    
-                                    Text(text = title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(text = suggestion.title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.height(4.dp))
-                                    Text(text = desc, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(text = suggestion.description, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
@@ -330,6 +338,7 @@ fun AgentProductSummaryListMessage(
     message: ChatMessage,
     onProductClick: (AgentProductSummary) -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
         Text(text = message.text, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
@@ -368,14 +377,14 @@ fun AgentProductSummaryListMessage(
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                product.productName ?: "Sản phẩm",
+                                product.productName ?: strings.trackedProduct,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                product.brand ?: "Thông tin từ agent",
+                                product.brand ?: strings.officialProductInfo,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp,
                                 maxLines = 1,
@@ -392,9 +401,11 @@ fun AgentProductSummaryListMessage(
 
 @Composable
 fun AgentTrendingSummaryMessage(message: ChatMessage) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
-        val title = message.text.ifBlank { "Deals hot hôm nay" }
+        val title = message.text.ifBlank { strings.todayHotDeals }
         Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
         Spacer(Modifier.height(12.dp))
 
@@ -420,13 +431,13 @@ fun AgentTrendingSummaryMessage(message: ChatMessage) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${deal.discountPercent?.toInt() ?: 0}% off",
+                                text = strings.discountPercent(deal.discountPercent?.toInt() ?: 0),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
                         }
                         Text(
-                            text = deal.currentPrice.toString(),
+                            text = formatPriceFromVnd(deal.currentPrice, languageMode),
                             color = PH_Primary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -511,10 +522,11 @@ fun ChatBubble(message: ChatMessage) {
 
 @Composable
 fun AgentCompareMessage(message: ChatMessage) {
+    val strings = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
         val total = message.compareItems.size
-        val title = if (message.text.isNotBlank()) message.text else "So sánh ${total} sản phẩm"
+        val title = if (message.text.isNotBlank()) message.text else strings.compareProducts(total)
         Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
         Spacer(Modifier.height(12.dp))
 
@@ -556,7 +568,7 @@ fun AgentCompareMessage(message: ChatMessage) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${item.platforms.size} nền tảng",
+                                text = strings.platforms(item.platforms.size),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
@@ -578,9 +590,11 @@ fun AgentCompareMessage(message: ChatMessage) {
 
 @Composable
 fun TrendingDealsMessage(message: ChatMessage) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
-        val title = if (message.text.isNotBlank()) message.text else "Deals hot hôm nay"
+        val title = if (message.text.isNotBlank()) message.text else strings.todayHotDeals
         Text(text = title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
         Spacer(Modifier.height(12.dp))
 
@@ -622,13 +636,13 @@ fun TrendingDealsMessage(message: ChatMessage) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${deal.discountPercent?.toInt() ?: 0}% off",
+                                text = strings.discountPercent(deal.discountPercent?.toInt() ?: 0),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
                         }
                         Text(
-                            text = "${deal.currentPrice}",
+                            text = formatPriceFromVnd(deal.currentPrice, languageMode),
                             color = PH_Primary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -642,6 +656,7 @@ fun TrendingDealsMessage(message: ChatMessage) {
 
 @Composable
 fun ProductListMessage(message: ChatMessage, onProductClick: (ProductResponse) -> Unit) {
+    val strings = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
         Text(text = message.text, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
@@ -679,9 +694,9 @@ fun ProductListMessage(message: ChatMessage, onProductClick: (ProductResponse) -
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(product.productName ?: "Sản phẩm", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("Xem giá ngay", color = PH_Primary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                            Text("${product.brand ?: "Chính hãng"} • Xem chi tiết", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(product.productName ?: strings.trackedProduct, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(strings.viewPriceNow, color = PH_Primary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                            Text("${product.brand ?: strings.officialProductInfo} • ${strings.viewDetails}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
@@ -693,6 +708,7 @@ fun ProductListMessage(message: ChatMessage, onProductClick: (ProductResponse) -
 
 @Composable
 fun InlineProductDetail(message: ChatMessage) {
+    val strings = LocalAppStrings.current
     val product = message.productData
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
@@ -702,7 +718,7 @@ fun InlineProductDetail(message: ChatMessage) {
             shape = RoundedCornerShape(20.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(text = product?.productName ?: "Chi tiết sản phẩm", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold)
+                Text(text = product?.productName ?: strings.productDetails, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(12.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(180.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                     if (product?.mainImageUrl != null) {
@@ -718,20 +734,20 @@ fun InlineProductDetail(message: ChatMessage) {
                 }
                 Spacer(Modifier.height(16.dp))
                 
-                Text("Lịch sử giá (30 ngày)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(strings.priceHistory30Days, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)))
                 
                 Spacer(Modifier.height(16.dp))
-                Text("Thông tin: ${product?.brand ?: "Chính hãng"}. Sản phẩm này đang có giá tốt tại Shopee và Lazada.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                Text(strings.productInfo(product?.brand ?: strings.officialProductInfo), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)) { 
-                         Text("Theo dõi giá") 
+                         Text(strings.followPrice) 
                     }
                     Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Text("Đến cửa hàng", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(strings.goToStore, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -741,15 +757,17 @@ fun InlineProductDetail(message: ChatMessage) {
 
 @Composable
 fun AgentHeader() {
+    val strings = LocalAppStrings.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
         Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = PH_Primary, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        Text("AI Agent", style = MaterialTheme.typography.labelSmall, color = PH_Primary, fontWeight = FontWeight.Bold)
+        Text(strings.aiAgent, style = MaterialTheme.typography.labelSmall, color = PH_Primary, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun AIComparisonMessage(text: String) {
+    val strings = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         AgentHeader()
         Text(text = text, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
@@ -770,7 +788,7 @@ fun AIComparisonMessage(text: String) {
                 PriceRowItem("Lazada", "18.190k", "14.790k")
                 PriceRowItem("Tiki", "17.890k", "14.390k")
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Lưu so sánh") }
+                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text(strings.saveComparison) }
             }
         }
     }
@@ -799,6 +817,7 @@ fun PriceRowItem(store: String, p1: String, p2: String) {
 
 @Composable
 fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, onSend: () -> Unit) {
+    val strings = LocalAppStrings.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.Transparent
@@ -811,7 +830,7 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
                 onValueChange = onValueChange,
                 placeholder = { 
                     Text(
-                        if (mode == "AI Agent") "Ask anything about products..." else "Tìm kiếm sản phẩm...",
+                        if (mode == "AI Agent") strings.aiAgentPlaceholder else strings.normalSearchPlaceholder,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp
                     ) 
