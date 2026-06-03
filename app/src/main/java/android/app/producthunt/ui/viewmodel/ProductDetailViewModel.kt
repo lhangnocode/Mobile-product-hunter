@@ -27,6 +27,9 @@ class ProductDetailViewModel @Inject constructor(
     private val _analysisState = MutableStateFlow<UiState<PriceAnalysisResponse>>(UiState.Idle)
     val analysisState: StateFlow<UiState<PriceAnalysisResponse>> = _analysisState.asStateFlow()
 
+    private val _selectedListing = MutableStateFlow<PlatformListingDto?>(null)
+    val selectedListing: StateFlow<PlatformListingDto?> = _selectedListing.asStateFlow()
+
     private val _priceAlertState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
     val priceAlertState: StateFlow<UiState<PriceAlertResponse>> = _priceAlertState.asStateFlow()
 
@@ -76,6 +79,7 @@ class ProductDetailViewModel @Inject constructor(
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
                 val firstListing = listingsResult.data.bestPricedListing()
+                _selectedListing.value = firstListing
                 
                 val currentPrice = firstListing.currentPrice.toDoubleOrNull() ?: 0.0
                 val originalPrice = firstListing.originalPrice?.toDoubleOrNull() ?: currentPrice
@@ -91,6 +95,14 @@ class ProductDetailViewModel @Inject constructor(
             _historyState.value = UiState.Loading
             _historyState.value = priceRecordRepository.getHistory(platformProductId)
         }
+    }
+
+    fun selectListing(listing: PlatformListingDto) {
+        _selectedListing.value = listing
+        val currentPrice = listing.currentPrice.toDoubleOrNull() ?: 0.0
+        val originalPrice = listing.originalPrice?.toDoubleOrNull() ?: currentPrice
+        loadPriceHistory(listing.id)
+        loadAnalysis(listing.id, currentPrice, originalPrice)
     }
 
     private fun loadAnalysis(platformProductId: String, currentPrice: Double, originalPrice: Double) {

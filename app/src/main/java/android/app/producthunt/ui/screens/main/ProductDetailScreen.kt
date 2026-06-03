@@ -59,6 +59,7 @@ fun ProductDetailScreen(
     val isWishlisted by viewModel.isWishlisted.collectAsState()
     val hasPriceAlert by viewModel.hasPriceAlert.collectAsState()
     val priceAlertState by viewModel.priceAlertState.collectAsState()
+    val selectedListing by viewModel.selectedListing.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPriceAlertDialog by remember { mutableStateOf(false) }
 
@@ -146,16 +147,33 @@ fun ProductDetailScreen(
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            MarketComparisonSection(listings)
+                            MarketComparisonSection(
+                                listings = listings,
+                                selectedListingId = selectedListing?.id,
+                                onSelectListing = { viewModel.selectListing(it) }
+                            )
 
                             Spacer(modifier = Modifier.height(40.dp))
 
-                            Text(
-                                "Lịch sử biến động giá",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = PH_Primary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Lịch sử biến động giá",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PH_Primary
+                                )
+                                selectedListing?.let {
+                                    Text(
+                                        text = platformName(it.platformId),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
 
                             when (val history = historyState) {
@@ -684,7 +702,11 @@ private fun parseRecordedAtMillis(rawDate: String): Long? =
         .getOrNull()
 
 @Composable
-fun MarketComparisonSection(listings: List<PlatformListingDto>) {
+fun MarketComparisonSection(
+    listings: List<PlatformListingDto>,
+    selectedListingId: String?,
+    onSelectListing: (PlatformListingDto) -> Unit
+) {
     val context = LocalContext.current
     val sortedListings = listings.sortedBy { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -694,13 +716,13 @@ fun MarketComparisonSection(listings: List<PlatformListingDto>) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(listing.affiliateUrl ?: listing.url))
-                        context.startActivity(intent)
-                    },
+                    .clickable { onSelectListing(listing) },
                 color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                border = BorderStroke(
+                    width = if (listing.id == selectedListingId) 1.5.dp else 1.dp,
+                    color = if (listing.id == selectedListingId) PH_Primary else MaterialTheme.colorScheme.outlineVariant
+                ),
                 shadowElevation = 2.dp
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -718,8 +740,20 @@ fun MarketComparisonSection(listings: List<PlatformListingDto>) {
                             color = if (listing.inStock) PH_Status_Success_Text else MaterialTheme.colorScheme.error,
                         )
                     }
-                    Text("%,.0f đ".format(price), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PH_Primary)
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("%,.0f đ".format(price), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PH_Primary)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(listing.affiliateUrl ?: listing.url))
+                                context.startActivity(intent)
+                            },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)
+                        ) {
+                            Text("Đi đến shop", fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }
