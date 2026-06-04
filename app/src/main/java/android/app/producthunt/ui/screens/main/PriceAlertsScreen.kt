@@ -1,14 +1,19 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
+import android.Manifest
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
-import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
 import android.app.producthunt.ui.theme.PHSpacing
+import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,6 +78,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,6 +87,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -91,7 +98,7 @@ fun PriceAlertsScreen(
     onNavigateToHunt: () -> Unit = {},
     onNavigateToDeals: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
-    onProductSelected: (String, String?) -> Unit = { _, _ -> },
+    onProductSelected: (String, String, String?, String?) -> Unit = { _, _, _, _ -> },
     viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
     val strings = LocalAppStrings.current
@@ -99,7 +106,15 @@ fun PriceAlertsScreen(
     val createState by viewModel.createState.collectAsState()
     val triggerState by viewModel.triggerState.collectAsState()
     val deleteAllState by viewModel.deleteAllState.collectAsState()
+    val deleteState by viewModel.deleteState.collectAsState()
+    val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) {
+        viewModel.trigger()
+    }
 
     val alerts = when (val s = alertsState) {
         is UiState.Success -> s.data.mapIndexed { index, dto ->
@@ -107,6 +122,7 @@ fun PriceAlertsScreen(
             val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
             val productName = dto.product?.productName
                 ?: dto.productName
+                ?: dto.rawName
                 ?: strings.trackedProduct
             val productDetails = listOfNotNull(
                 dto.product?.brand,
@@ -129,7 +145,6 @@ fun PriceAlertsScreen(
         else -> emptyList()
     }
 
-    var notificationsEnabled by remember { mutableStateOf(true) }
     LaunchedEffect(createState) {
         when (val state = createState) {
             is UiState.Success -> {
@@ -178,6 +193,20 @@ fun PriceAlertsScreen(
         }
     }
 
+    LaunchedEffect(deleteState) {
+        when (val state = deleteState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(strings.priceAlertRemoved, duration = SnackbarDuration.Short)
+                viewModel.resetDeleteState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetDeleteState()
+            }
+            else -> Unit
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
@@ -192,7 +221,23 @@ fun PriceAlertsScreen(
                         isTriggering = triggerState is UiState.Loading,
                         isClearing = deleteAllState is UiState.Loading,
                         hasAlerts = alerts.isNotEmpty(),
-                        onTriggerClick = { viewModel.trigger() },
+                        onTriggerClick = {
+                            val needsNotificationPermission =
+                                notificationsEnabled &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    ) != PackageManager.PERMISSION_GRANTED
+
+                            if (needsNotificationPermission) {
+                                notificationPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                )
+                            } else {
+                                viewModel.trigger()
+                            }
+                        },
                         onClearAllClick = { viewModel.deleteAll() },
                     )
                 }
@@ -200,13 +245,13 @@ fun PriceAlertsScreen(
                     Spacer(Modifier.height(20.dp))
                     MasterNotificationsCard(
                         enabled = notificationsEnabled,
-                        onToggle = { notificationsEnabled = it },
+                        onToggle = viewModel::setNotificationsEnabled,
                     )
                     Spacer(Modifier.height(24.dp))
                 }
                 item {
-                    SectionLabel(strings.activePrecisionTracking)
-                    Spacer(Modifier.height(12.dp))
+                    PriceAlertCounterPanel(alertCount = alerts.size)
+                    Spacer(Modifier.height(16.dp))
                 }
                 when (alertsState) {
                     is UiState.Loading, UiState.Idle -> item {
@@ -238,8 +283,15 @@ fun PriceAlertsScreen(
                                 val dto = (alertsState as UiState.Success).data[index]
                                 AlertCard(
                                     alert = alerts[index],
-                                    onDeleteClick = { viewModel.delete(dto.productId) },
-                                    onClick = { onProductSelected(dto.productId, alerts[index].imageUrl) },
+                                    onDeleteClick = { viewModel.delete(dto.platformProductId) },
+                                    onClick = {
+                                        onProductSelected(
+                                            dto.productId,
+                                            dto.platformProductId,
+                                            alerts[index].imageUrl,
+                                            alerts[index].name,
+                                        )
+                                    },
                                 )
                                 Spacer(Modifier.height(12.dp))
                             }
@@ -298,6 +350,66 @@ private fun TopBar() {
                 tint = Color.White,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun PriceAlertCounterPanel(alertCount: Int) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PHSpacing.ScreenHorizontal),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.priceAlerts,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = alertCount.toString(),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

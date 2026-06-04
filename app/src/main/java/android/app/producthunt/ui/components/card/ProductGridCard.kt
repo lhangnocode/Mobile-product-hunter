@@ -34,9 +34,11 @@ fun ProductGridCard(
     originalPrice: String? = null,
     discount: String? = null,
     isWishlisted: Boolean = false,
+    hasPriceAlert: Boolean = false,
     modifier: Modifier = Modifier,
     onProductClick: () -> Unit = {},
-    onWishlistClick: () -> Unit = {}
+    onWishlistClick: () -> Unit = {},
+    onPriceAlertClick: () -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -76,21 +78,39 @@ fun ProductGridCard(
                     }
                 }
                 
-                // Wishlist Icon overlay
-                IconButton(
-                    onClick = onWishlistClick,
+                Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp)
-                        .size(32.dp)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(
-                        imageVector = if (isWishlisted) PHIcons.Wishlist else PHIcons.WishlistOutlined,
-                        contentDescription = "Wishlist",
-                        tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    IconButton(
+                        onClick = onPriceAlertClick,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = if (hasPriceAlert) PHIcons.Notifications else PHIcons.NotificationsOutlined,
+                            contentDescription = "Price alert",
+                            tint = if (hasPriceAlert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onWishlistClick,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = if (isWishlisted) PHIcons.Wishlist else PHIcons.WishlistOutlined,
+                            contentDescription = "Wishlist",
+                            tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 

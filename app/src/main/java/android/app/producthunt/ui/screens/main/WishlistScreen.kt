@@ -10,6 +10,7 @@ import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,14 +35,21 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -61,26 +69,107 @@ fun WishlistScreen(
 ) {
     val strings = LocalAppStrings.current
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
+    val removeState by wishlistViewModel.removeState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header for Wishlist
-            Text(
-                text = strings.wishlist,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            if (wishlistState is UiState.Success && (wishlistState as UiState.Success).data.isNotEmpty()) {
-                TextButton(onClick = { wishlistViewModel.removeAll() }) {
-                    Text(strings.clearAll.replace("\n", " "), color = MaterialTheme.colorScheme.error)
-                }
+    LaunchedEffect(removeState) {
+        when (val state = removeState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data > 1) strings.wishlistRemovedMany(state.data) else strings.wishlistRemoved,
+                    duration = SnackbarDuration.Short,
+                )
+                wishlistViewModel.resetRemoveState()
             }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                wishlistViewModel.resetRemoveState()
+            }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
+            WishlistCounterPanel(
+                count = wishlistCount,
+                hasItems = wishlistCount > 0,
+                onClearAll = { wishlistViewModel.removeAll() },
+            )
             
             SavedProductsContent(wishlistState, navController, wishlistViewModel)
+        }
+    }
+}
+
+@Composable
+private fun WishlistCounterPanel(
+    count: Int,
+    hasItems: Boolean,
+    onClearAll: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.wishlist,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "$count",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            TextButton(
+                onClick = onClearAll,
+                enabled = hasItems,
+            ) {
+                Text(
+                    text = strings.clearAll.replace("\n", " "),
+                    color = if (hasItems) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
@@ -116,7 +205,11 @@ private fun SavedProductsContent(
                 ) {
                     items(state.data) { item ->
                         val p = item.product
-                        val name = p?.productName ?: item.productName ?: strings.trackedProduct
+                        val name = p?.productName
+                            ?: item.productName
+                            ?: item.rawName
+                            ?: item.normalizedName
+                            ?: strings.trackedProduct
                         val image = p?.mainImageUrl ?: item.mainImageUrl
                         
                         WishlistProductCard(
@@ -130,10 +223,15 @@ private fun SavedProductsContent(
                                 val route = buildString {
                                     append("${Route.PRODUCT_DETAIL}/${item.productId}")
                                     if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                    append(if (encodedImage.isNullOrBlank()) "?" else "&")
+                                    append("platformProductId=${item.platformProductId}")
+                                    append("&")
+                                    append("productName=")
+                                    append(URLEncoder.encode(name, StandardCharsets.UTF_8.toString()))
                                 }
                                 navController.navigate(route)
                             },
-                            onRemoveClick = { viewModel.remove(item.productId) }
+                            onRemoveClick = { viewModel.remove(item.platformProductId) }
                         )
                     }
                 }

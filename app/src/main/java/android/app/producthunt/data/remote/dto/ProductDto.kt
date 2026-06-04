@@ -53,6 +53,7 @@ data class SearchCompareResponse(
 
 data class TrendingDealResponse(
     @SerializedName("id") val id: String,
+    @SerializedName("platform_product_id") val platformProductId: String? = null,
     @SerializedName("product_id") val productId: String? = null,
     @SerializedName("product_name") val productName: String,
     @SerializedName("main_image_url") val mainImageUrl: String?,
@@ -66,6 +67,9 @@ data class TrendingDealResponse(
 
 val TrendingDealResponse.detailProductId: String
     get() = productId ?: id
+
+val TrendingDealResponse.detailPlatformProductId: String
+    get() = platformProductId ?: id
 
 fun TrendingDealResponse.discountLabel(): String? {
     val calculatedPercent = originalPrice

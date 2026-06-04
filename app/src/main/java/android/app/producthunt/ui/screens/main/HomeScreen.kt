@@ -3,6 +3,7 @@ package android.app.producthunt.ui.screens.main
 import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.local.LanguageMode
+import android.app.producthunt.data.remote.dto.detailPlatformProductId
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
@@ -41,31 +42,92 @@ fun HomeScreen(
     ) {
         val trendingState by trendingViewModel.trendingState.collectAsState()
         val wishlistedIds by trendingViewModel.wishlistedIds.collectAsState()
+        val priceAlertIds by trendingViewModel.priceAlertIds.collectAsState()
+        val wishlistActionState by trendingViewModel.wishlistActionState.collectAsState()
+        val priceAlertState by trendingViewModel.priceAlertState.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
+        var alertDeal by remember { mutableStateOf<TrendingDealResponse?>(null) }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp),
-        ) {
-            item {
-                SectionHeader(title = strings.trendingDeals, onActionClick = { /* View more logic */ })
+        LaunchedEffect(wishlistActionState) {
+            when (val state = wishlistActionState) {
+                is UiState.Success -> {
+                    snackbarHostState.showSnackbar(
+                        if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
+                        duration = SnackbarDuration.Short,
+                    )
+                    trendingViewModel.resetWishlistActionState()
+                }
+                is UiState.Error -> {
+                    snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                    trendingViewModel.resetWishlistActionState()
+                }
+                else -> Unit
             }
-            
-            item {
-                ProductListSection(
-                    trendingState = trendingState,
-                    languageMode = languageMode,
-                    wishlistedIds = wishlistedIds,
-                    onProductClick = { deal ->
-                        val encodedImage = deal.mainImageUrl?.let { Uri.encode(it) }
-                        val encodedName = Uri.encode(deal.productName)
-                        val route = buildString {
-                            append("${Route.PRODUCT_DETAIL}/${deal.detailProductId}")
-                            append("?imageUrl=${encodedImage.orEmpty()}")
-                            append("&productName=$encodedName")
-                        }
-                        navController.navigate(route)
+        }
+
+        LaunchedEffect(priceAlertState) {
+            when (val state = priceAlertState) {
+                is UiState.Success -> {
+                    alertDeal = null
+                    snackbarHostState.showSnackbar(strings.priceAlertSaved, duration = SnackbarDuration.Short)
+                    trendingViewModel.resetPriceAlertState()
+                }
+                is UiState.Error -> {
+                    snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                    trendingViewModel.resetPriceAlertState()
+                }
+                else -> Unit
+            }
+        }
+
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp),
+            ) {
+                item {
+                    SectionHeader(title = strings.trendingDeals, onActionClick = { /* View more logic */ })
+                }
+                
+                item {
+                    ProductListSection(
+                        trendingState = trendingState,
+                        languageMode = languageMode,
+                        wishlistedIds = wishlistedIds,
+                        priceAlertIds = priceAlertIds,
+                        onProductClick = { deal ->
+                            val encodedImage = deal.mainImageUrl?.let { Uri.encode(it) }
+                            val encodedName = Uri.encode(deal.productName)
+                            val route = buildString {
+                                append("${Route.PRODUCT_DETAIL}/${deal.detailProductId}")
+                                append("?imageUrl=${encodedImage.orEmpty()}")
+                                append("&productName=$encodedName")
+                                append("&platformProductId=${deal.detailPlatformProductId}")
+                            }
+                            navController.navigate(route)
+                        },
+                        onWishlistClick = { trendingViewModel.toggleWishlist(it) },
+                        onPriceAlertClick = { alertDeal = it },
+                    )
+                }
+            }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            )
+
+            alertDeal?.let { deal ->
+                PriceAlertTargetDialog(
+                    productName = deal.productName,
+                    currentPrice = deal.currentPrice,
+                    isLoading = priceAlertState is UiState.Loading,
+                    onDismiss = {
+                        if (priceAlertState !is UiState.Loading) alertDeal = null
                     },
-                    onWishlistClick = { trendingViewModel.toggleWishlist(it) }
+                    onConfirm = { targetPrice ->
+                        trendingViewModel.createPriceAlert(deal, targetPrice)
+                    },
                 )
             }
         }
@@ -94,8 +156,10 @@ private fun ProductListSection(
     trendingState: UiState<List<TrendingDealResponse>>,
     languageMode: LanguageMode,
     wishlistedIds: Set<String>,
+    priceAlertIds: Set<String>,
     onProductClick: (TrendingDealResponse) -> Unit,
-    onWishlistClick: (String) -> Unit,
+    onWishlistClick: (TrendingDealResponse) -> Unit,
+    onPriceAlertClick: (TrendingDealResponse) -> Unit,
 ) {
     when (trendingState) {
         is UiState.Success -> {
@@ -124,9 +188,11 @@ private fun ProductListSection(
                                 originalPrice = originalPriceLabel,
                                 discount = discountLabel,
                                 modifier = Modifier.weight(1f),
-                                isWishlisted = deal.detailProductId in wishlistedIds,
+                                isWishlisted = deal.detailPlatformProductId in wishlistedIds,
+                                hasPriceAlert = deal.detailPlatformProductId in priceAlertIds,
                                 onProductClick = { onProductClick(deal) },
-                                onWishlistClick = { onWishlistClick(deal.detailProductId) },
+                                onWishlistClick = { onWishlistClick(deal) },
+                                onPriceAlertClick = { onPriceAlertClick(deal) },
                             )
                         }
                         if (rowDeals.size == 1) Spacer(modifier = Modifier.weight(1f))
