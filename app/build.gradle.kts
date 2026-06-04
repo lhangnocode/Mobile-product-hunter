@@ -15,7 +15,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "android.app.producthunt"
+        applicationId = "com.mobileproducthunter.app"
+        testApplicationId = "com.mobileproducthunter.app.test"
         minSdk = 31
         targetSdk = 36
         versionCode = 1

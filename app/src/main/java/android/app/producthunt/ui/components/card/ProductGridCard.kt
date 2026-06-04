@@ -144,8 +144,7 @@ fun ProductGridCard(
             // Price Section
             if (!currentPrice.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
-                
-                // Row cho Giá gốc và Tag giảm giá (Sát nhau theo mẫu)
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,

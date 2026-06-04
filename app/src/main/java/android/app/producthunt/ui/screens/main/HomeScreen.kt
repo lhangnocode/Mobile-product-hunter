@@ -86,7 +86,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(bottom = 16.dp),
             ) {
                 item {
-                    SectionHeader(title = strings.trendingDeals, onActionClick = { /* View more logic */ })
+                    SectionHeader(title = strings.trendingDeals)
                 }
                 
                 item {
@@ -135,19 +135,14 @@ fun HomeScreen(
 }
 
 @Composable
-private fun SectionHeader(title: String, onActionClick: () -> Unit) {
-    val strings = LocalAppStrings.current
+private fun SectionHeader(title: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        TextButton(onClick = onActionClick) {
-            Text(strings.seeAll, color = PH_Primary)
-        }
     }
 }
 
@@ -163,7 +158,7 @@ private fun ProductListSection(
 ) {
     when (trendingState) {
         is UiState.Success -> {
-            val deals = trendingState.data.take(10)
+            val deals = trendingState.data.take(20)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -29,6 +29,13 @@ class ThemeViewModel @Inject constructor(
         initialValue = LanguageMode.VIETNAMESE,
     )
 
+    val priceAlertNotificationsEnabled: StateFlow<Boolean> =
+        themePreferences.priceAlertNotificationsEnabled.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true,
+        )
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             themePreferences.setThemeMode(mode)
@@ -42,6 +49,12 @@ class ThemeViewModel @Inject constructor(
     fun setLanguageMode(mode: LanguageMode) {
         viewModelScope.launch {
             themePreferences.setLanguageMode(mode)
+        }
+    }
+
+    fun setPriceAlertNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferences.setPriceAlertNotificationsEnabled(enabled)
         }
     }
 }

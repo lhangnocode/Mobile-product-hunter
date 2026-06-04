@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -65,6 +64,7 @@ class MainActivity : ComponentActivity() {
             val focusManager = LocalFocusManager.current
             val keyboardController = LocalSoftwareKeyboardController.current
             val themeMode by themeViewModel.themeMode.collectAsState()
+            val priceAlertNotificationsEnabled by themeViewModel.priceAlertNotificationsEnabled.collectAsState()
             val systemDarkTheme = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> systemDarkTheme
@@ -97,8 +97,6 @@ class MainActivity : ComponentActivity() {
                     ?.getString("conversationId")
                     ?.takeIf { it != "new" }
                 val chrome = currentRoute.toChromeConfig()
-                val childScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -112,9 +110,13 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppDrawerContent(
                                 themeMode = themeMode,
+                                priceAlertNotificationsEnabled = priceAlertNotificationsEnabled,
                                 currentUser = currentUser,
                                 agentConversations = agentConversations,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
+                                onNotificationsEnabledChange = {
+                                    themeViewModel.setPriceAlertNotificationsEnabled(it)
+                                },
                                 onNewSearch = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.SEARCH)
@@ -151,13 +153,6 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         modifier = Modifier
                             .fillMaxSize()
-                            .then(
-                                if (chrome.topBar == TopBarType.Child) {
-                                    Modifier.nestedScroll(childScrollBehavior.nestedScrollConnection)
-                                } else {
-                                    Modifier
-                                }
-                            )
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = {
                                     focusManager.clearFocus()
@@ -179,7 +174,6 @@ class MainActivity : ComponentActivity() {
                                     onBack = { navController.popBackStack() },
                                     showSearchAction = chrome.showSearchAction,
                                     onSearchClick = { navController.navigate(Route.SEARCH) },
-                                    scrollBehavior = childScrollBehavior,
                                 )
                                 TopBarType.None -> Unit
                             }
@@ -206,9 +200,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppDrawerContent(
     themeMode: ThemeMode,
+    priceAlertNotificationsEnabled: Boolean,
     currentUser: UserResponse?,
     agentConversations: List<AgentConversationEntity>,
     onThemeChange: (ThemeMode) -> Unit,
+    onNotificationsEnabledChange: (Boolean) -> Unit,
     onNewSearch: () -> Unit,
     onConversationClick: (String) -> Unit,
     onDeleteConversation: (String) -> Unit,
@@ -309,6 +305,26 @@ fun AppDrawerContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
+                .clickable { onNotificationsEnabledChange(!priceAlertNotificationsEnabled) }
+                .padding(12.dp)
+        ) {
+            CustomIcon(
+                if (priceAlertNotificationsEnabled) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                contentDescription = null,
+            )
+            Spacer(Modifier.width(12.dp))
+            Text("Notifications", modifier = Modifier.weight(1f))
+            Switch(
+                checked = priceAlertNotificationsEnabled,
+                onCheckedChange = onNotificationsEnabledChange,
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
                 .clickable { onThemeChange(if (themeMode == ThemeMode.DARK) ThemeMode.LIGHT else ThemeMode.DARK) }
                 .padding(12.dp)
         ) {
@@ -355,11 +371,6 @@ fun AppDrawerContent(
                         fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = PH_Primary,
                     )
                 }
                 CustomIcon(Icons.Default.Settings, contentDescription = null, size = 18.dp)

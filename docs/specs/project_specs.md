@@ -4,7 +4,7 @@
 
 **Product Hunter** is a native Android app (Kotlin + Jetpack Compose) that lets users track product prices across Vietnamese e-commerce platforms (Shopee, Lazada, Tiki). Users can set price-drop alerts, browse trending deals, and maintain a personal watchlist.
 
-- **Package ID:** `android.app.producthunt`
+- **Package ID:** `com.mobileproducthunter.app`
 - **Min SDK:** 31 (Android 12)
 - **Target SDK:** 36
 - **Version:** 1.0 (versionCode 1)

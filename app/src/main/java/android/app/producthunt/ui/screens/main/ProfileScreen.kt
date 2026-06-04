@@ -10,10 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.LockReset
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,12 +20,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -39,6 +37,14 @@ fun ProfileScreen(
     val scrollState = rememberScrollState()
     val currentUserState by viewModel.currentUserState.collectAsState()
     val currentUser = (currentUserState as? UiState.Success)?.data
+    val signOutToLogin = {
+        viewModel.logout()
+        navController.navigate(Route.LOGIN) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                inclusive = true
+            }
+        }
+    }
 
     LaunchedEffect(currentUserState) {
         if (currentUserState == UiState.Idle) {
@@ -82,63 +88,71 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Menu Items (Image 08)
-            ProfileMenuItem(
-                icon = Icons.Default.Settings,
-                title = "Account Settings",
-                onClick = { /* Navigate to Account Settings */ }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ProfileInfoCard(
+                email = currentUser?.email,
             )
-            
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             ProfileMenuItem(
-                icon = Icons.Default.NotificationsNone,
-                title = "Notification Settings",
-                onClick = { /* Navigate to Notifications */ }
+                icon = Icons.Default.LockReset,
+                title = "Forgot Password",
+                onClick = { navController.navigate(Route.FORGOT_PASSWORD) }
             )
-            
+
             ProfileMenuItem(
-                icon = Icons.Default.CreditCard,
-                title = "Manage Subscription",
-                onClick = { /* Navigate to Subscription */ }
+                icon = Icons.Default.ManageAccounts,
+                title = "Switch Account",
+                onClick = signOutToLogin
             )
-            
-            ProfileMenuItem(
-                icon = Icons.AutoMirrored.Filled.HelpOutline,
-                title = "Help & Support",
-                onClick = { /* Navigate to Support */ }
-            )
-            
+
             ProfileMenuItem(
                 icon = Icons.AutoMirrored.Filled.Logout,
                 title = "Log Out",
                 textColor = MaterialTheme.colorScheme.error,
-                showArrow = false,
-                onClick = {
-                    viewModel.logout()
-                    navController.navigate(Route.LOGIN) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            inclusive = true
-                        }
-                    }
-                }
+                onClick = signOutToLogin
             )
         }
+    }
+}
+
+@Composable
+private fun ProfileInfoCard(
+    email: String?,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ProfileInfoRow(label = "Email", value = email ?: "Loading account...")
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -147,7 +161,6 @@ fun ProfileMenuItem(
     icon: ImageVector,
     title: String,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
-    showArrow: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
@@ -180,19 +193,14 @@ fun ProfileMenuItem(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            Text(
-                text = title,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = textColor
-            )
-            
-            if (showArrow) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
