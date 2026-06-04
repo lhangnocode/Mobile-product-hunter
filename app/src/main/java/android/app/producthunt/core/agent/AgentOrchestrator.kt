@@ -210,7 +210,7 @@ object AgentOrchestrator {
                 }
 
                 try {
-                    llmRuntime.sendMessageFinal(contents).collect { event ->
+                    llmRuntime.sendMessage(contents).collect { event ->
                         when (event) {
                             LlmChatEvent.Started -> callback.onStarted()
                             is LlmChatEvent.Message -> {
