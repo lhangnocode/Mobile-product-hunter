@@ -9,6 +9,8 @@ import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.ExperimentalApi
+import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -60,11 +62,10 @@ class LlmRuntime(
 
                 ILog.i(TAG, "init", "initializing engine", modelPath)
                 val cacheDir = File(context.cacheDir, "litertlm").apply { mkdirs() }
+                enableSpeculativeDecoding()
                 val config = EngineConfig(
                     modelPath = modelPath,
                     backend = Backend.GPU(),
-                    visionBackend = Backend.CPU(),
-                    audioBackend = Backend.CPU(),
                     cacheDir = cacheDir.absolutePath,
                 )
 
@@ -168,6 +169,12 @@ class LlmRuntime(
     private suspend fun ensureEngineInitialized() {
         if (engine?.isInitialized() == true) return
         `init`().getOrThrow()
+    }
+
+    @OptIn(ExperimentalApi::class)
+    private fun enableSpeculativeDecoding() {
+        ExperimentalFlags.enableSpeculativeDecoding = true
+        ILog.d(TAG, "enableSpeculativeDecoding", "enabled")
     }
 
     private fun Message.extractText(): String =
