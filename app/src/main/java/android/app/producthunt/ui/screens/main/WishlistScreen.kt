@@ -10,6 +10,7 @@ import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -74,7 +76,7 @@ fun WishlistScreen(
         when (val state = removeState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    if (state.data > 1) "Removed ${state.data} wishlist items" else "Removed from wishlist",
+                    if (state.data > 1) strings.wishlistRemovedMany(state.data) else strings.wishlistRemoved,
                     duration = SnackbarDuration.Short,
                 )
                 wishlistViewModel.resetRemoveState()
@@ -92,22 +94,82 @@ fun WishlistScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header for Wishlist
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
-            Text(
-                text = "${strings.wishlist}: $wishlistCount",
-                modifier = Modifier.padding(padding).padding(16.dp),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+            WishlistCounterPanel(
+                count = wishlistCount,
+                hasItems = wishlistCount > 0,
+                onClearAll = { wishlistViewModel.removeAll() },
             )
-            if (wishlistState is UiState.Success && (wishlistState as UiState.Success).data.isNotEmpty()) {
-                TextButton(onClick = { wishlistViewModel.removeAll() }) {
-                    Text(strings.clearAll.replace("\n", " "), color = MaterialTheme.colorScheme.error)
-                }
-            }
             
             SavedProductsContent(wishlistState, navController, wishlistViewModel)
+        }
+    }
+}
+
+@Composable
+private fun WishlistCounterPanel(
+    count: Int,
+    hasItems: Boolean,
+    onClearAll: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.wishlist,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "$count",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            TextButton(
+                onClick = onClearAll,
+                enabled = hasItems,
+            ) {
+                Text(
+                    text = strings.clearAll.replace("\n", " "),
+                    color = if (hasItems) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }

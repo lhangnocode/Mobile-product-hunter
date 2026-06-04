@@ -99,7 +99,7 @@ fun ProductDetailScreen(
         when (val state = wishlistActionState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    if (state.data) "Added to wishlist" else "Removed from wishlist",
+                    if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
                 )
                 viewModel.resetWishlistActionState()
             }

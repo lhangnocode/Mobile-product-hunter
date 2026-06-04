@@ -1,10 +1,12 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.TrendingDealResponse
 import android.app.producthunt.data.remote.dto.detailPlatformProductId
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.LocalLanguageMode
 import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
@@ -54,15 +56,16 @@ fun TrendingScreen(
     val priceAlertIds by viewModel.priceAlertIds.collectAsState()
     val wishlistActionState by viewModel.wishlistActionState.collectAsState()
     val priceAlertState by viewModel.priceAlertState.collectAsState()
+    val strings = LocalAppStrings.current
     val languageMode = LocalLanguageMode.current
     val snackbarHostState = remember { SnackbarHostState() }
-    var alertDeal by remember { mutableStateOf<android.app.producthunt.data.remote.dto.TrendingDealResponse?>(null) }
+    var alertDeal by remember { mutableStateOf<TrendingDealResponse?>(null) }
 
     LaunchedEffect(wishlistActionState) {
         when (val state = wishlistActionState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    if (state.data) "Added to wishlist" else "Removed from wishlist",
+                    if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
                     duration = SnackbarDuration.Short,
                 )
                 viewModel.resetWishlistActionState()
@@ -77,11 +80,11 @@ fun TrendingScreen(
 
     LaunchedEffect(priceAlertState) {
         when (val state = priceAlertState) {
-            is UiState.Success -> {
-                alertDeal = null
-                snackbarHostState.showSnackbar("Price alert saved", duration = SnackbarDuration.Short)
-                viewModel.resetPriceAlertState()
-            }
+                is UiState.Success -> {
+                    alertDeal = null
+                    snackbarHostState.showSnackbar(strings.priceAlertSaved, duration = SnackbarDuration.Short)
+                    viewModel.resetPriceAlertState()
+                }
             is UiState.Error -> {
                 snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
                 viewModel.resetPriceAlertState()

@@ -196,7 +196,7 @@ fun PriceAlertsScreen(
     LaunchedEffect(deleteState) {
         when (val state = deleteState) {
             is UiState.Success -> {
-                snackbarHostState.showSnackbar("Price alert removed", duration = SnackbarDuration.Short)
+                snackbarHostState.showSnackbar(strings.priceAlertRemoved, duration = SnackbarDuration.Short)
                 viewModel.resetDeleteState()
             }
             is UiState.Error -> {
@@ -250,16 +250,8 @@ fun PriceAlertsScreen(
                     Spacer(Modifier.height(24.dp))
                 }
                 item {
-                    Text(
-                        text = "${strings.priceAlerts}: ${alerts.size}",
-                        modifier = Modifier.padding(horizontal = PHSpacing.ScreenHorizontal),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    SectionLabel(strings.activePrecisionTracking)
-                    Spacer(Modifier.height(12.dp))
+                    PriceAlertCounterPanel(alertCount = alerts.size)
+                    Spacer(Modifier.height(16.dp))
                 }
                 when (alertsState) {
                     is UiState.Loading, UiState.Idle -> item {
@@ -358,6 +350,66 @@ private fun TopBar() {
                 tint = Color.White,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun PriceAlertCounterPanel(alertCount: Int) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PHSpacing.ScreenHorizontal),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.priceAlerts,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = alertCount.toString(),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

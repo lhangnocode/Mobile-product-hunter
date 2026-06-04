@@ -52,7 +52,7 @@ fun HomeScreen(
             when (val state = wishlistActionState) {
                 is UiState.Success -> {
                     snackbarHostState.showSnackbar(
-                        if (state.data) "Added to wishlist" else "Removed from wishlist",
+                        if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
                         duration = SnackbarDuration.Short,
                     )
                     trendingViewModel.resetWishlistActionState()
@@ -69,7 +69,7 @@ fun HomeScreen(
             when (val state = priceAlertState) {
                 is UiState.Success -> {
                     alertDeal = null
-                    snackbarHostState.showSnackbar("Price alert saved", duration = SnackbarDuration.Short)
+                    snackbarHostState.showSnackbar(strings.priceAlertSaved, duration = SnackbarDuration.Short)
                     trendingViewModel.resetPriceAlertState()
                 }
                 is UiState.Error -> {
