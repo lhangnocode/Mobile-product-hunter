@@ -91,16 +91,29 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Route.SEARCH}?q={q}",
-            arguments = listOf(navArgument("q") { 
-                type = NavType.StringType
-                nullable = true
-                defaultValue = null
-            })
+            route = "${Route.SEARCH}?q={q}&conversationId={conversationId}",
+            arguments = listOf(
+                navArgument("q") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("conversationId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            )
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("q")
+            val conversationId = backStackEntry.arguments?.getString("conversationId")
             // SearchScreen will be the Chat-based interface
-            SearchScreen(navController = navController, initialQuery = query, authViewModel = authViewModel)
+            SearchScreen(
+                navController = navController,
+                initialQuery = query,
+                initialConversationId = conversationId,
+                authViewModel = authViewModel,
+            )
         }
 
         composable(Route.WISHLIST) {

@@ -1,7 +1,7 @@
 package android.app.producthunt
 
-import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.local.ThemeMode
+import android.app.producthunt.data.local.db.entity.AgentConversationEntity
 import android.app.producthunt.data.remote.dto.UserResponse
 import android.app.producthunt.ui.components.UserAvatar
 import android.app.producthunt.ui.components.appbar.MainNavBar
@@ -11,12 +11,10 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.core.state.UiState
-import android.app.producthunt.ui.i18n.AppStrings
-import android.app.producthunt.ui.i18n.LocalAppStrings
-import android.app.producthunt.ui.i18n.ProductHunterLocale
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
+import android.app.producthunt.ui.viewmodel.AgentConversationHistoryViewModel
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
 import android.os.Bundle
@@ -49,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -66,7 +65,6 @@ class MainActivity : ComponentActivity() {
             val focusManager = LocalFocusManager.current
             val keyboardController = LocalSoftwareKeyboardController.current
             val themeMode by themeViewModel.themeMode.collectAsState()
-            val languageMode by themeViewModel.languageMode.collectAsState()
             val systemDarkTheme = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> systemDarkTheme
@@ -75,8 +73,6 @@ class MainActivity : ComponentActivity() {
             }
 
             AndroidAppProductHuntTheme(darkTheme = darkTheme) {
-                ProductHunterLocale(languageMode = languageMode) {
-                val strings = LocalAppStrings.current
                 val startupState by authViewModel.startupState.collectAsState()
                 val currentUserState by authViewModel.currentUserState.collectAsState()
                 val currentUser = (currentUserState as? UiState.Success)?.data
@@ -87,15 +83,20 @@ class MainActivity : ComponentActivity() {
 
                 if (startupState is UiState.Idle || startupState is UiState.Loading) {
                     StartupLoadingScreen()
-                    return@ProductHunterLocale
+                    return@AndroidAppProductHuntTheme
                 }
 
                 val isAuthenticated = (startupState as? UiState.Success)?.data == true
                 // Default to Search as per design vision
                 val startDestination = if (isAuthenticated) Route.SEARCH else Route.LOGIN
+                val agentHistoryViewModel: AgentConversationHistoryViewModel = hiltViewModel()
+                val agentConversations by agentHistoryViewModel.conversations.collectAsState()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route?.baseRoute()
-                val chrome = currentRoute.toChromeConfig(strings)
+                val currentConversationId = backStackEntry?.arguments
+                    ?.getString("conversationId")
+                    ?.takeIf { it != "new" }
+                val chrome = currentRoute.toChromeConfig()
                 val childScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -111,17 +112,24 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppDrawerContent(
                                 themeMode = themeMode,
-                                languageMode = languageMode,
                                 currentUser = currentUser,
+                                agentConversations = agentConversations,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
-                                onLanguageChange = { themeViewModel.setLanguageMode(it) },
                                 onNewSearch = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.SEARCH)
                                 },
-                                onHistoryClick = {
+                                onConversationClick = { conversationId ->
                                     scope.launch { drawerState.close() }
-                                    navController.navigate(Route.SEARCH_HISTORY)
+                                    navController.navigate("${Route.SEARCH}?conversationId=$conversationId")
+                                },
+                                onDeleteConversation = { conversationId ->
+                                    agentHistoryViewModel.deleteConversation(conversationId)
+                                    if (currentRoute == Route.SEARCH && currentConversationId == conversationId) {
+                                        navController.navigate(Route.SEARCH) {
+                                            launchSingleTop = true
+                                        }
+                                    }
                                 },
                                 onManageAccount = {
                                     scope.launch { drawerState.close() }
@@ -190,27 +198,54 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDrawerContent(
     themeMode: ThemeMode,
-    languageMode: LanguageMode,
     currentUser: UserResponse?,
+    agentConversations: List<AgentConversationEntity>,
     onThemeChange: (ThemeMode) -> Unit,
-    onLanguageChange: (LanguageMode) -> Unit,
     onNewSearch: () -> Unit,
-    onHistoryClick: () -> Unit,
+    onConversationClick: (String) -> Unit,
+    onDeleteConversation: (String) -> Unit,
     onManageAccount: () -> Unit,
     onAppInformation: () -> Unit,
     onAgentManagement: () -> Unit,
 ) {
-    val strings = LocalAppStrings.current
+    var pendingDeleteConversation by remember { mutableStateOf<AgentConversationEntity?>(null) }
+
+    pendingDeleteConversation?.let { conversation ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteConversation = null },
+            title = { Text("Delete conversation?") },
+            text = {
+                Text(
+                    conversation.title
+                        ?: "This agent conversation and its messages will be removed.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteConversation = null
+                        onDeleteConversation(conversation.id)
+                    },
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteConversation = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -230,7 +265,7 @@ fun AppDrawerContent(
         }
 
         NavigationDrawerItem(
-            label = { Text(strings.newSearch, fontWeight = FontWeight.Medium) },
+            label = { Text("New Search", fontWeight = FontWeight.Medium) },
             selected = false,
             onClick = onNewSearch,
             icon = { CustomIcon(PHIcons.Add, contentDescription = null) },
@@ -239,16 +274,17 @@ fun AppDrawerContent(
 
         Spacer(Modifier.height(8.dp))
 
-        Text(strings.history, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text("History", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
-        val recentHistory = listOf("Compare Samsung Tab S10 vs iPad Mini", "Best laptop for AI under 20M", "iPhone 15 vs Galaxy S24")
-        recentHistory.forEach { history ->
-            NavigationDrawerItem(
-                label = { Text(history, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                selected = false,
-                onClick = onHistoryClick,
-                icon = { CustomIcon(PHIcons.History, contentDescription = null) },
-                shape = RoundedCornerShape(12.dp)
+        if (agentConversations.isEmpty()) {
+            EmptyHistoryPlaceholder()
+        }
+
+        agentConversations.take(6).forEach { conversation ->
+            AgentHistoryDrawerItem(
+                conversation = conversation,
+                onClick = { onConversationClick(conversation.id) },
+                onDeleteClick = { pendingDeleteConversation = conversation },
             )
         }
 
@@ -257,7 +293,7 @@ fun AppDrawerContent(
         Text("Agent", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         NavigationDrawerItem(
-            label = { Text(strings.aiAgent) },
+            label = { Text("AI Agent") },
             selected = false,
             onClick = onAgentManagement,
             icon = { CustomIcon(Icons.Default.AutoAwesome, contentDescription = null) },
@@ -266,7 +302,7 @@ fun AppDrawerContent(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
 
-        Text(strings.appearance, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text("Appearance", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -278,41 +314,15 @@ fun AppDrawerContent(
         ) {
             CustomIcon(if (themeMode == ThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = null)
             Spacer(Modifier.width(12.dp))
-            Text(strings.darkMode, modifier = Modifier.weight(1f))
+            Text("Dark Mode", modifier = Modifier.weight(1f))
             Switch(
                 checked = themeMode == ThemeMode.DARK,
                 onCheckedChange = { onThemeChange(if (it) ThemeMode.DARK else ThemeMode.LIGHT) }
             )
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .padding(12.dp)
-        ) {
-            CustomIcon(Icons.Default.Language, contentDescription = null)
-            Spacer(Modifier.width(12.dp))
-            Text(strings.language, modifier = Modifier.weight(1f))
-            SingleChoiceSegmentedButtonRow {
-                LanguageMode.entries.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        selected = languageMode == mode,
-                        onClick = { onLanguageChange(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = LanguageMode.entries.size,
-                        ),
-                    ) {
-                        Text(if (mode == LanguageMode.ENGLISH) "EN" else "VI")
-                    }
-                }
-            }
-        }
-
         NavigationDrawerItem(
-            label = { Text(strings.appInformation) },
+            label = { Text("App Information") },
             selected = false,
             onClick = { onAppInformation() },
             icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
@@ -340,14 +350,14 @@ fun AppDrawerContent(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        currentUser?.fullName?.takeIf { it.isNotBlank() } ?: currentUser?.email ?: strings.productHunterUser,
+                        currentUser?.fullName?.takeIf { it.isNotBlank() } ?: currentUser?.email ?: "Product Hunter User",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: strings.freePlan,
+                        currentUser?.plan?.takeIf { it.isNotBlank() } ?: "Free Plan",
                         style = MaterialTheme.typography.labelSmall,
                         color = PH_Primary,
                     )
@@ -363,6 +373,81 @@ fun AppDrawerContent(
             color = Color.Gray,
             modifier = Modifier.padding(start = 4.dp)
         )
+    }
+}
+
+@Composable
+private fun EmptyHistoryPlaceholder() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CustomIcon(
+            PHIcons.History,
+            contentDescription = null,
+            tint = Color.Gray,
+            size = 18.dp,
+        )
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = "No AI chats yet",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+            )
+            Text(
+                text = "Ask the AI Agent for help and your chats will appear here.",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AgentHistoryDrawerItem(
+    conversation: AgentConversationEntity,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .padding(start = 4.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onClick)
+                .padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CustomIcon(PHIcons.History, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = conversation.title ?: "New agent chat",
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(
+            onClick = onDeleteClick,
+            modifier = Modifier.size(36.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete conversation",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -390,47 +475,47 @@ private data class ChromeConfig(
     val showSearchAction: Boolean = false,
 )
 
-private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
+private fun String?.toChromeConfig(): ChromeConfig =
     when (this) {
         Route.FEED -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = strings.feed,
+            title = "Feed",
             showBottomBar = true,
         )
         Route.SEARCH -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = strings.search,
+            title = "Search",
             showBottomBar = true,
         )
         Route.WISHLIST -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = strings.wishlist,
+            title = "Wishlist",
             showBottomBar = true,
         )
         Route.ALERTS -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = strings.priceAlerts,
+            title = "Price Alerts",
             showBottomBar = true,
         )
         Route.PROFILE -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = strings.profile,
+            title = "Profile",
         )
         Route.SEARCH_HISTORY -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = strings.history,
+            title = "History",
         )
         Route.PRODUCT_DETAIL -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = strings.details,
+            title = "Details",
         )
         Route.APP_INFORMATION -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = strings.appInformation,
+            title = "App Information",
         )
         Route.AGENT_MANAGEMENT -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = strings.aiAgent,
+            title = "AI Agent",
         )
         else -> ChromeConfig()
     }

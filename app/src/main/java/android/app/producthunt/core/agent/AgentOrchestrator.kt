@@ -147,6 +147,21 @@ object AgentOrchestrator {
         return llmRuntime.isInitialized()
     }
 
+    suspend fun switchConversation(
+        conversationId: String,
+        agent: Agent = DefaultAgent,
+    ): Result<Unit> {
+        ensureConfigured()
+        val conversation = conversationRepository.getConversation(conversationId)
+            ?: return Result.failure(IllegalArgumentException("Agent conversation not found"))
+
+        return runCatching {
+            ensureRuntimeConversation(conversation, agent)
+        }.onFailure { error ->
+            ILog.e(TAG, "switchConversation", "failed", conversationId, throwable = error)
+        }
+    }
+
     suspend fun performAgentCall(
         prompt: String,
         conversationId: String? = null,
@@ -181,6 +196,7 @@ object AgentOrchestrator {
                 conversationId = conversation.id,
                 text = persistedUserText,
             )
+            updateConversationTitleIfNeeded(conversation, persistedUserText)
 
             AgentToolResultStore.clear()
             var finalText = ""
@@ -261,6 +277,34 @@ object AgentOrchestrator {
             agentId = agent.id,
             title = null,
         )
+    }
+
+    private suspend fun updateConversationTitleIfNeeded(
+        conversation: AgentConversationEntity,
+        prompt: String,
+    ) {
+        if (!conversation.title.isNullOrBlank()) return
+
+        val title = prompt.toConversationTitle()
+        if (title.isBlank()) return
+
+        conversationRepository.upsertConversation(
+            conversation.copy(
+                title = title,
+                updatedAt = System.currentTimeMillis(),
+            )
+        )
+    }
+
+    private fun String.toConversationTitle(): String {
+        val compact = trim()
+            .replace(Regex("\\s+"), " ")
+
+        return if (compact.length <= 56) {
+            compact
+        } else {
+            compact.take(53).trimEnd() + "..."
+        }
     }
 
     private suspend fun ensureRuntimeConversation(
