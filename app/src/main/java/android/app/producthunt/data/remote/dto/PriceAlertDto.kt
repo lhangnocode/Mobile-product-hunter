@@ -3,20 +3,22 @@ package android.app.producthunt.data.remote.dto
 import com.google.gson.annotations.SerializedName
 
 data class PriceAlertCreate(
-    @SerializedName("product_id") val productId: String,
+    @SerializedName("platform_product_id") val platformProductId: String,
+    @SerializedName("product_id") val productId: String? = null,
     @SerializedName("target_price") val targetPrice: Double,
 )
 
 data class PriceAlertResponse(
-    @SerializedName("id") val id: String,
+    @SerializedName("id") val id: String? = null,
     @SerializedName("product_id") val productId: String,
-    @SerializedName("user_id") val userId: String,
+    @SerializedName("platform_product_id") val platformProductId: String,
+    @SerializedName("user_id") val userId: String? = null,
     @SerializedName("target_price") val targetPrice: Double,
     @SerializedName("current_price") val currentPrice: Double? = null,
     @SerializedName("last_checked_price") val lastCheckedPrice: Double? = null,
     @SerializedName("latest_price") val latestPrice: Double? = null,
     @SerializedName("price") val price: Double? = null,
-    @SerializedName("is_active") val isActive: Boolean,
+    @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("status") val status: String? = null,
     @SerializedName("target_reached") val targetReached: Boolean? = null,
     @SerializedName("is_target_reached") val isTargetReached: Boolean? = null,
@@ -26,15 +28,17 @@ data class PriceAlertResponse(
     @SerializedName("last_triggered_at") val lastTriggeredAt: String? = null,
     @SerializedName("notified_at") val notifiedAt: String? = null,
     @SerializedName("last_notified_at") val lastNotifiedAt: String? = null,
-    @SerializedName("created_at") val createdAt: String?,
-    @SerializedName("product") val product: ProductResponse?,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("product") val product: ProductResponse? = null,
     // Fallback fields for display
     @SerializedName("product_name") val productName: String? = null,
+    @SerializedName("raw_name") val rawName: String? = null,
     @SerializedName("main_image_url") val mainImageUrl: String? = null,
 )
 
 data class TriggerAlertRequest(
     @SerializedName("product_id") val productId: String? = null,
+    @SerializedName("platform_product_id") val platformProductId: String? = null,
 )
 
 data class TriggerAlertResponse(
@@ -43,4 +47,7 @@ data class TriggerAlertResponse(
     @SerializedName("triggered_count") val triggeredCount: Int? = null,
     @SerializedName("sent_count") val sentCount: Int? = null,
     @SerializedName("matched_count") val matchedCount: Int? = null,
-)
+) {
+    fun notificationCount(): Int =
+        (triggeredCount ?: sentCount ?: matchedCount ?: 0).coerceAtLeast(0)
+}

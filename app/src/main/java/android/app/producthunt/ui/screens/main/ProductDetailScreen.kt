@@ -59,6 +59,7 @@ import java.util.Locale
 fun ProductDetailScreen(
     navController: NavController,
     productId: String?,
+    initialPlatformProductId: String? = null,
     imageUrl: String? = null,
     viewModel: ProductDetailViewModel = hiltViewModel(),
     productName: String?
@@ -70,12 +71,13 @@ fun ProductDetailScreen(
     val isWishlisted by viewModel.isWishlisted.collectAsState()
     val hasPriceAlert by viewModel.hasPriceAlert.collectAsState()
     val priceAlertState by viewModel.priceAlertState.collectAsState()
+    val wishlistActionState by viewModel.wishlistActionState.collectAsState()
     val selectedListing by viewModel.selectedListing.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPriceAlertDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(productId) {
-        productId?.let { viewModel.loadProductDetails(it) }
+    LaunchedEffect(productId, initialPlatformProductId) {
+        productId?.let { viewModel.loadProductDetails(it, initialPlatformProductId) }
     }
 
     LaunchedEffect(priceAlertState) {
@@ -93,12 +95,30 @@ fun ProductDetailScreen(
         }
     }
 
+    LaunchedEffect(wishlistActionState) {
+        when (val state = wishlistActionState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data) "Added to wishlist" else "Removed from wishlist",
+                )
+                viewModel.resetWishlistActionState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetWishlistActionState()
+            }
+            else -> Unit
+        }
+    }
+
     val scrollState = rememberScrollState()
     val currentListings = (listingsState as? UiState.Success)?.data.orEmpty()
-    val currentProductTitle = productName ?: strings.trackedProduct
-    val currentProductPrice = currentListings
-        .mapNotNull { it.currentPrice.toDoubleOrNull() }
-        .minOrNull()
+    val currentProductTitle = selectedListing?.rawName
+        ?: productName
+        ?: currentListings.firstOrNull()?.rawName
+        ?: strings.trackedProduct
+    val currentProductPrice = selectedListing?.currentPrice?.toDoubleOrNull()
+        ?: currentListings.mapNotNull { it.currentPrice.toDoubleOrNull() }.minOrNull()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -116,14 +136,14 @@ fun ProductDetailScreen(
                 if (listings.isEmpty()) {
                     EmptyState(navController)
                 } else {
-                    val bestListing = listings.bestPricedListing()
+                    val headerListing = selectedListing ?: listings.bestPricedListing()
                     
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
                     ) {
-                        ProductHeaderCinematic(bestListing, imageUrl)
+                        ProductHeaderCinematic(headerListing, imageUrl)
 
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                             Text(
@@ -218,12 +238,12 @@ fun ProductDetailScreen(
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 32.dp, end = 16.dp)
             ) {
-                productId?.let { id ->
+                selectedListing?.let { listing ->
                     ProductFloatingActions(
-                        productId = id,
+                        productId = listing.id,
                         isWishlisted = isWishlisted,
                         hasPriceAlert = hasPriceAlert,
-                        onWishlistClick = { viewModel.toggleWishlist(id) },
+                        onWishlistClick = { viewModel.toggleWishlist(listing) },
                         onAlertClick = { showPriceAlertDialog = true }
                     )
                 }
@@ -234,7 +254,8 @@ fun ProductDetailScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
             )
 
-            if (showPriceAlertDialog && productId != null) {
+            val alertListing = selectedListing
+            if (showPriceAlertDialog && alertListing != null) {
                 PriceAlertTargetDialog(
                     productName = currentProductTitle,
                     currentPrice = currentProductPrice,
@@ -245,7 +266,7 @@ fun ProductDetailScreen(
                         }
                     },
                     onConfirm = { targetPrice ->
-                        viewModel.createPriceAlert(productId, targetPrice)
+                        viewModel.createPriceAlert(alertListing, targetPrice)
                     },
                 )
             }
@@ -254,7 +275,7 @@ fun ProductDetailScreen(
 }
 
 @Composable
-private fun PriceAlertTargetDialog(
+fun PriceAlertTargetDialog(
     productName: String,
     currentPrice: Double?,
     isLoading: Boolean,

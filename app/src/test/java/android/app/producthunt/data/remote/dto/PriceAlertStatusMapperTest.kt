@@ -69,6 +69,7 @@ class PriceAlertStatusMapperTest {
     ) = PriceAlertResponse(
         id = "alert-1",
         productId = "product-1",
+        platformProductId = "platform-product-1",
         userId = "user-1",
         targetPrice = targetPrice,
         currentPrice = currentPrice,

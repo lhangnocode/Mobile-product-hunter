@@ -1,6 +1,7 @@
 package android.app.producthunt.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,6 +41,8 @@ class ThemePreferencesDataStore @Inject constructor(
     companion object {
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_LANGUAGE_MODE = stringPreferencesKey("language_mode")
+        private val KEY_PRICE_ALERT_NOTIFICATIONS_ENABLED =
+            booleanPreferencesKey("price_alert_notifications_enabled")
     }
 
     val themeMode: Flow<ThemeMode> =
@@ -52,6 +55,11 @@ class ThemePreferencesDataStore @Inject constructor(
             LanguageMode.from(prefs[KEY_LANGUAGE_MODE])
         }
 
+    val priceAlertNotificationsEnabled: Flow<Boolean> =
+        context.themeDataStore.data.map { prefs ->
+            prefs[KEY_PRICE_ALERT_NOTIFICATIONS_ENABLED] ?: true
+        }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         context.themeDataStore.edit { prefs ->
             prefs[KEY_THEME_MODE] = mode.name
@@ -61,6 +69,12 @@ class ThemePreferencesDataStore @Inject constructor(
     suspend fun setLanguageMode(mode: LanguageMode) {
         context.themeDataStore.edit { prefs ->
             prefs[KEY_LANGUAGE_MODE] = mode.name
+        }
+    }
+
+    suspend fun setPriceAlertNotificationsEnabled(enabled: Boolean) {
+        context.themeDataStore.edit { prefs ->
+            prefs[KEY_PRICE_ALERT_NOTIFICATIONS_ENABLED] = enabled
         }
     }
 }

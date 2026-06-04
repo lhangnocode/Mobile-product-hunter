@@ -34,12 +34,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -61,16 +67,37 @@ fun WishlistScreen(
 ) {
     val strings = LocalAppStrings.current
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
+    val removeState by wishlistViewModel.removeState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Surface(
+    LaunchedEffect(removeState) {
+        when (val state = removeState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data > 1) "Removed ${state.data} wishlist items" else "Removed from wishlist",
+                    duration = SnackbarDuration.Short,
+                )
+                wishlistViewModel.resetRemoveState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                wishlistViewModel.resetRemoveState()
+            }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
         Column(modifier = Modifier.fillMaxSize()) {
             // Header for Wishlist
+            val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
             Text(
-                text = strings.wishlist,
-                modifier = Modifier.padding(16.dp),
+                text = "${strings.wishlist}: $wishlistCount",
+                modifier = Modifier.padding(padding).padding(16.dp),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -116,7 +143,11 @@ private fun SavedProductsContent(
                 ) {
                     items(state.data) { item ->
                         val p = item.product
-                        val name = p?.productName ?: item.productName ?: strings.trackedProduct
+                        val name = p?.productName
+                            ?: item.productName
+                            ?: item.rawName
+                            ?: item.normalizedName
+                            ?: strings.trackedProduct
                         val image = p?.mainImageUrl ?: item.mainImageUrl
                         
                         WishlistProductCard(
@@ -130,10 +161,15 @@ private fun SavedProductsContent(
                                 val route = buildString {
                                     append("${Route.PRODUCT_DETAIL}/${item.productId}")
                                     if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                    append(if (encodedImage.isNullOrBlank()) "?" else "&")
+                                    append("platformProductId=${item.platformProductId}")
+                                    append("&")
+                                    append("productName=")
+                                    append(URLEncoder.encode(name, StandardCharsets.UTF_8.toString()))
                                 }
                                 navController.navigate(route)
                             },
-                            onRemoveClick = { viewModel.remove(item.productId) }
+                            onRemoveClick = { viewModel.remove(item.platformProductId) }
                         )
                     }
                 }

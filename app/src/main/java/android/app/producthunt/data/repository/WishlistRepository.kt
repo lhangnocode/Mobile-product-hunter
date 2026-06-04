@@ -34,16 +34,16 @@ class WishlistRepository @Inject constructor(
         }
     }
 
-    suspend fun add(productId: String): UiState<WishlistResponse> = try {
-        val result = api.add(WishListCreate(productId))
+    suspend fun add(platformProductId: String, productId: String? = null): UiState<Unit> = try {
+        api.add(WishListCreate(platformProductId = platformProductId, productId = productId))
         refresh() 
-        UiState.Success(result)
+        UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to add to wishlist")
     }
 
-    suspend fun remove(productId: String): UiState<Unit> = try {
-        api.remove(productId)
+    suspend fun remove(platformProductId: String): UiState<Unit> = try {
+        api.remove(platformProductId)
         refresh()
         UiState.Success(Unit)
     } catch (e: Exception) {

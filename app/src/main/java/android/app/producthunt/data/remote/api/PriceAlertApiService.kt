@@ -18,8 +18,8 @@ interface PriceAlertApiService {
     @GET("api/v1/price_alerts/")
     suspend fun list(): List<PriceAlertResponse>
 
-    @DELETE("api/v1/price_alerts/{product_id}")
-    suspend fun delete(@Path("product_id") productId: String)
+    @DELETE("api/v1/price_alerts/{platform_product_id}")
+    suspend fun delete(@Path("platform_product_id") platformProductId: String)
 
     @POST("api/v1/price_alerts/trigger")
     suspend fun trigger(@Body body: TriggerAlertRequest): TriggerAlertResponse
