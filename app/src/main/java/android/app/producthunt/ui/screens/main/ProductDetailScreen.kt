@@ -164,7 +164,15 @@ fun ProductDetailScreen(
 
                             // Price Analysis Section
                             if (analysisState is UiState.Success) {
-                                PriceAnalysisCards((analysisState as UiState.Success).data)
+                                val averagePrice = (historyState as? UiState.Success)
+                                    ?.data
+                                    ?.mapNotNull { it.price.toDoubleOrNull() }
+                                    ?.takeIf { it.isNotEmpty() }
+                                    ?.average()
+                                PriceAnalysisCards(
+                                    analysis = (analysisState as UiState.Success).data,
+                                    averagePrice = averagePrice,
+                                )
                             } else if (analysisState is UiState.Loading) {
                                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp), color = PH_Primary)
                             }
@@ -498,7 +506,7 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
 }
 
 @Composable
-fun PriceAnalysisCards(analysis: PriceAnalysisResponse) {
+fun PriceAnalysisCards(analysis: PriceAnalysisResponse, averagePrice: Double?) {
     val strings = LocalAppStrings.current
     val languageMode = LocalLanguageMode.current
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -511,7 +519,7 @@ fun PriceAnalysisCards(analysis: PriceAnalysisResponse) {
         )
         AnalysisCard(
             label = strings.averagePrice,
-            value = formatPriceFromVnd(analysis.averagePrice ?: analysis.currentPrice, languageMode),
+            value = formatPriceFromVnd(averagePrice ?: analysis.currentPrice, languageMode),
             icon = Icons.Default.Timeline,
             color = Color(0xFF2962FF),
             modifier = Modifier.weight(1f)
@@ -604,7 +612,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 58.dp, end = 18.dp, top = 28.dp, bottom = 42.dp)
+                .padding(start = 82.dp, end = 18.dp, top = 28.dp, bottom = 42.dp)
         ) {
             val width = size.width
             val height = size.height
@@ -673,7 +681,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 12.dp, top = 22.dp, bottom = 48.dp)
-                .width(44.dp)
+                .width(66.dp)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.End,
@@ -693,7 +701,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(start = 58.dp, end = 18.dp, bottom = 12.dp),
+                .padding(start = 82.dp, end = 18.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             xAxisIndexes.forEach { index ->

@@ -1,5 +1,6 @@
 package android.app.producthunt
 
+import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.local.ThemeMode
 import android.app.producthunt.data.local.db.entity.AgentConversationEntity
 import android.app.producthunt.data.remote.dto.UserResponse
@@ -11,6 +12,8 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.ProductHunterLocale
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
@@ -64,6 +67,7 @@ class MainActivity : ComponentActivity() {
             val focusManager = LocalFocusManager.current
             val keyboardController = LocalSoftwareKeyboardController.current
             val themeMode by themeViewModel.themeMode.collectAsState()
+            val languageMode by themeViewModel.languageMode.collectAsState()
             val priceAlertNotificationsEnabled by themeViewModel.priceAlertNotificationsEnabled.collectAsState()
             val systemDarkTheme = isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
@@ -73,6 +77,7 @@ class MainActivity : ComponentActivity() {
             }
 
             AndroidAppProductHuntTheme(darkTheme = darkTheme) {
+                ProductHunterLocale(languageMode = languageMode) locale@{
                 val startupState by authViewModel.startupState.collectAsState()
                 val currentUserState by authViewModel.currentUserState.collectAsState()
                 val currentUser = (currentUserState as? UiState.Success)?.data
@@ -83,7 +88,7 @@ class MainActivity : ComponentActivity() {
 
                 if (startupState is UiState.Idle || startupState is UiState.Loading) {
                     StartupLoadingScreen()
-                    return@AndroidAppProductHuntTheme
+                    return@locale
                 }
 
                 val isAuthenticated = (startupState as? UiState.Success)?.data == true
@@ -110,10 +115,12 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AppDrawerContent(
                                 themeMode = themeMode,
+                                languageMode = languageMode,
                                 priceAlertNotificationsEnabled = priceAlertNotificationsEnabled,
                                 currentUser = currentUser,
                                 agentConversations = agentConversations,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
+                                onLanguageChange = { themeViewModel.setLanguageMode(it) },
                                 onNotificationsEnabledChange = {
                                     themeViewModel.setPriceAlertNotificationsEnabled(it)
                                 },
@@ -192,6 +199,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -200,10 +208,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppDrawerContent(
     themeMode: ThemeMode,
+    languageMode: LanguageMode,
     priceAlertNotificationsEnabled: Boolean,
     currentUser: UserResponse?,
     agentConversations: List<AgentConversationEntity>,
     onThemeChange: (ThemeMode) -> Unit,
+    onLanguageChange: (LanguageMode) -> Unit,
     onNotificationsEnabledChange: (Boolean) -> Unit,
     onNewSearch: () -> Unit,
     onConversationClick: (String) -> Unit,
@@ -212,6 +222,7 @@ fun AppDrawerContent(
     onAppInformation: () -> Unit,
     onAgentManagement: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     var pendingDeleteConversation by remember { mutableStateOf<AgentConversationEntity?>(null) }
 
     pendingDeleteConversation?.let { conversation ->
@@ -261,7 +272,7 @@ fun AppDrawerContent(
         }
 
         NavigationDrawerItem(
-            label = { Text("New Search", fontWeight = FontWeight.Medium) },
+            label = { Text(strings.newSearch, fontWeight = FontWeight.Medium) },
             selected = false,
             onClick = onNewSearch,
             icon = { CustomIcon(PHIcons.Add, contentDescription = null) },
@@ -273,7 +284,10 @@ fun AppDrawerContent(
         Text("History", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         if (agentConversations.isEmpty()) {
-            EmptyHistoryPlaceholder()
+            EmptyHistoryPlaceholder(
+                title = strings.historyEmptyTitle,
+                description = strings.historyEmptyDescription,
+            )
         }
 
         agentConversations.take(6).forEach { conversation ->
@@ -298,7 +312,7 @@ fun AppDrawerContent(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
 
-        Text("Appearance", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text(strings.appearance, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -313,7 +327,7 @@ fun AppDrawerContent(
                 contentDescription = null,
             )
             Spacer(Modifier.width(12.dp))
-            Text("Notifications", modifier = Modifier.weight(1f))
+            Text(strings.alerts, modifier = Modifier.weight(1f))
             Switch(
                 checked = priceAlertNotificationsEnabled,
                 onCheckedChange = onNotificationsEnabledChange,
@@ -330,11 +344,47 @@ fun AppDrawerContent(
         ) {
             CustomIcon(if (themeMode == ThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = null)
             Spacer(Modifier.width(12.dp))
-            Text("Dark Mode", modifier = Modifier.weight(1f))
+            Text(strings.darkMode, modifier = Modifier.weight(1f))
             Switch(
                 checked = themeMode == ThemeMode.DARK,
                 onCheckedChange = { onThemeChange(if (it) ThemeMode.DARK else ThemeMode.LIGHT) }
             )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CustomIcon(Icons.Default.Language, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = strings.language,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        modifier = Modifier.weight(1f),
+                        selected = languageMode == LanguageMode.VIETNAMESE,
+                        onClick = { onLanguageChange(LanguageMode.VIETNAMESE) },
+                        label = { Text(strings.vietnameseShort, maxLines = 1) },
+                    )
+                    FilterChip(
+                        modifier = Modifier.weight(1f),
+                        selected = languageMode == LanguageMode.ENGLISH,
+                        onClick = { onLanguageChange(LanguageMode.ENGLISH) },
+                        label = { Text(strings.englishShort, maxLines = 1) },
+                    )
+                }
+            }
         }
 
         NavigationDrawerItem(
@@ -388,7 +438,10 @@ fun AppDrawerContent(
 }
 
 @Composable
-private fun EmptyHistoryPlaceholder() {
+private fun EmptyHistoryPlaceholder(
+    title: String,
+    description: String,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -404,13 +457,13 @@ private fun EmptyHistoryPlaceholder() {
         Spacer(Modifier.width(12.dp))
         Column {
             Text(
-                text = "No AI chats yet",
+                text = title,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )
             Text(
-                text = "Ask the AI Agent for help and your chats will appear here.",
+                text = description,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.Gray,
             )

@@ -281,8 +281,6 @@ fun WishlistProductCard(
                 Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(4.dp))
                 Text(text = currentPrice, color = PH_Primary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                Spacer(Modifier.height(4.dp))
-                Text(text = "↓ 300k from yesterday", color = Color(0xFF4CAF50), fontSize = 12.sp)
             }
 
             IconButton(onClick = onRemoveClick) {
