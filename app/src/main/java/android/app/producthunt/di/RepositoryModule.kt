@@ -1,5 +1,6 @@
 package android.app.producthunt.di
 
+import android.app.producthunt.core.notification.FcmTokenRegistrar
 import android.app.producthunt.data.local.TokenDataStore
 import android.app.producthunt.data.remote.api.AuthApiService
 import android.app.producthunt.data.remote.api.PlatformProductApiService
@@ -24,8 +25,12 @@ import javax.inject.Singleton
 object RepositoryModule {
 
     @Provides @Singleton
-    fun provideAuthRepository(api: AuthApiService, tokenDataStore: TokenDataStore): AuthRepository =
-        AuthRepository(api, tokenDataStore)
+    fun provideAuthRepository(
+        api: AuthApiService,
+        tokenDataStore: TokenDataStore,
+        fcmTokenRegistrar: FcmTokenRegistrar,
+    ): AuthRepository =
+        AuthRepository(api, tokenDataStore, fcmTokenRegistrar)
 
     @Provides @Singleton
     fun provideProductRepository(api: ProductApiService): ProductRepository =

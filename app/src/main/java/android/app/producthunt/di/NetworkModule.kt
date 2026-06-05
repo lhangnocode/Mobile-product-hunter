@@ -2,6 +2,7 @@ package android.app.producthunt.di
 
 import android.app.producthunt.BuildConfig
 import android.app.producthunt.data.remote.api.AuthApiService
+import android.app.producthunt.data.remote.api.DeviceTokenApiService
 import android.app.producthunt.data.remote.api.PlatformProductApiService
 import android.app.producthunt.data.remote.api.PriceAlertApiService
 import android.app.producthunt.data.remote.api.PriceRecordApiService
@@ -51,6 +52,10 @@ object NetworkModule {
     @Provides @Singleton
     fun provideAuthApiService(retrofit: Retrofit): AuthApiService =
         retrofit.create(AuthApiService::class.java)
+
+    @Provides @Singleton
+    fun provideDeviceTokenApiService(retrofit: Retrofit): DeviceTokenApiService =
+        retrofit.create(DeviceTokenApiService::class.java)
 
     @Provides @Singleton
     fun provideProductApiService(retrofit: Retrofit): ProductApiService =

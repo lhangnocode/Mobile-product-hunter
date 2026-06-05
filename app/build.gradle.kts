@@ -4,6 +4,7 @@ plugins {
 
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -90,4 +91,6 @@ dependencies {
     implementation(libs.coil.compose)
 
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation(platform("com.google.firebase:firebase-bom:34.14.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }
