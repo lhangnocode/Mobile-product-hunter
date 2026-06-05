@@ -23,6 +23,7 @@ import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -51,8 +52,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import android.graphics.Color as AndroidColor
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -62,7 +65,9 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
+        )
         setContent {
             val navController = rememberNavController()
             val focusManager = LocalFocusManager.current
@@ -106,6 +111,10 @@ class MainActivity : ComponentActivity() {
                 val chrome = currentRoute.toChromeConfig(strings)
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView)
+                        .isAppearanceLightStatusBars = chrome.topBar == TopBarType.None && !darkTheme
+                }
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
@@ -582,6 +591,10 @@ private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
         Route.AGENT_MANAGEMENT -> ChromeConfig(
             topBar = TopBarType.Child,
             title = strings.aiAgent,
+        )
+        Route.FORGOT_PASSWORD -> ChromeConfig(
+            topBar = TopBarType.Child,
+            title = strings.forgotPassword,
         )
         else -> ChromeConfig()
     }

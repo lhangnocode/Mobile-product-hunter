@@ -362,21 +362,16 @@ fun ProductSearchLanding(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             suggestions.forEach { suggestion ->
-                val isHighlighted = suggestion == "AIRPODS PRO"
                 Surface(
                     modifier = Modifier
                         .height(36.dp)
                         .clip(CircleShape)
                         .clickable { onSuggestionClick(suggestion) },
-                    color = if (isHighlighted) {
-                        Color(0xFFFFF7F2)
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
+                    color = MaterialTheme.colorScheme.surface,
                     shape = CircleShape,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (isHighlighted) PH_Primary.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outlineVariant,
+                        MaterialTheme.colorScheme.outlineVariant,
                     ),
                     tonalElevation = 2.dp,
                     shadowElevation = 2.dp,
@@ -389,7 +384,7 @@ fun ProductSearchLanding(
                             text = suggestion,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (isHighlighted) PH_Primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
