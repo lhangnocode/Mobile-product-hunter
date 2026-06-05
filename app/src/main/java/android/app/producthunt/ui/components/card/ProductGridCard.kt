@@ -107,7 +107,7 @@ fun ProductGridCard(
                         Icon(
                             imageVector = if (isWishlisted) PHIcons.Wishlist else PHIcons.WishlistOutlined,
                             contentDescription = "Wishlist",
-                            tint = if (isWishlisted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (isWishlisted) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }

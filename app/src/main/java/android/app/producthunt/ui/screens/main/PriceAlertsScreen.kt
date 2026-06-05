@@ -6,7 +6,6 @@ import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
 import android.app.producthunt.ui.i18n.LocalAppStrings
-import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
@@ -243,13 +242,6 @@ fun PriceAlertsScreen(
                 }
                 item {
                     Spacer(Modifier.height(20.dp))
-                    MasterNotificationsCard(
-                        enabled = notificationsEnabled,
-                        onToggle = viewModel::setNotificationsEnabled,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                }
-                item {
                     PriceAlertCounterPanel(alertCount = alerts.size)
                     Spacer(Modifier.height(16.dp))
                 }

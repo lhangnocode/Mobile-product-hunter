@@ -1,5 +1,6 @@
 package android.app.producthunt
 
+import android.Manifest
 import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.local.ThemeMode
 import android.app.producthunt.data.local.db.entity.AgentConversationEntity
@@ -21,11 +22,15 @@ import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.AgentConversationHistoryViewModel
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -52,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -111,6 +117,37 @@ class MainActivity : ComponentActivity() {
                 val chrome = currentRoute.toChromeConfig(strings)
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
+                val currentPostNotificationPermission =
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == PackageManager.PERMISSION_GRANTED
+                var hasPostNotificationPermission by remember {
+                    mutableStateOf(currentPostNotificationPermission)
+                }
+                LaunchedEffect(currentPostNotificationPermission) {
+                    hasPostNotificationPermission = currentPostNotificationPermission
+                }
+                val effectivePriceAlertNotificationsEnabled =
+                    priceAlertNotificationsEnabled && hasPostNotificationPermission
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                ) { isGranted ->
+                    hasPostNotificationPermission = isGranted
+                    if (isGranted) {
+                        themeViewModel.setPriceAlertNotificationsEnabled(true)
+                    }
+                }
+                val onPriceAlertNotificationsChange: (Boolean) -> Unit = { enabled ->
+                    if (!enabled) {
+                        themeViewModel.setPriceAlertNotificationsEnabled(false)
+                    } else if (!hasPostNotificationPermission) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        themeViewModel.setPriceAlertNotificationsEnabled(true)
+                    }
+                }
                 SideEffect {
                     WindowCompat.getInsetsController(window, window.decorView)
                         .isAppearanceLightStatusBars = chrome.topBar == TopBarType.None && !darkTheme
@@ -127,14 +164,12 @@ class MainActivity : ComponentActivity() {
                             AppDrawerContent(
                                 themeMode = themeMode,
                                 languageMode = languageMode,
-                                priceAlertNotificationsEnabled = priceAlertNotificationsEnabled,
+                                priceAlertNotificationsEnabled = effectivePriceAlertNotificationsEnabled,
                                 currentUser = currentUser,
                                 agentConversations = agentConversations,
                                 onThemeChange = { themeViewModel.setThemeMode(it) },
                                 onLanguageChange = { themeViewModel.setLanguageMode(it) },
-                                onNotificationsEnabledChange = {
-                                    themeViewModel.setPriceAlertNotificationsEnabled(it)
-                                },
+                                onNotificationsEnabledChange = onPriceAlertNotificationsChange,
                                 onNewSearch = {
                                     scope.launch { drawerState.close() }
                                     navController.navigate(Route.SEARCH)

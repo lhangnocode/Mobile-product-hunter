@@ -3,6 +3,7 @@ package android.app.producthunt.ui.screens.main
 import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.widget.ImageView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
@@ -56,15 +59,7 @@ private fun HeroSection(copy: AppInfoCopy) {
             .padding(vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(76.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "🎯", fontSize = 34.sp)
-        }
+        AppLauncherIcon(modifier = Modifier.size(96.dp))
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Product Hunter",
@@ -90,6 +85,24 @@ private fun HeroSection(copy: AppInfoCopy) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
         )
     }
+}
+
+@Composable
+private fun AppLauncherIcon(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    AndroidView(
+        modifier = modifier,
+        factory = { viewContext ->
+            ImageView(viewContext).apply {
+                contentDescription = "Product Hunter"
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+            }
+        },
+        update = { imageView ->
+            imageView.setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+        },
+    )
 }
 
 @Composable
