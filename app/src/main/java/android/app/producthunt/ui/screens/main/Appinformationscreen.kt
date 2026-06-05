@@ -1,5 +1,8 @@
 package android.app.producthunt.ui.screens.main
 
+import android.app.producthunt.data.local.LanguageMode
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.automirrored.outlined.ShowChart
 fun AppInformationScreen(
     modifier: Modifier = Modifier
 ) {
+    val copy = appInfoCopy(LocalLanguageMode.current)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -32,20 +36,20 @@ fun AppInformationScreen(
             .verticalScroll(rememberScrollState())
             .padding(bottom = 24.dp)
     ) {
-        HeroSection()
+        HeroSection(copy)
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), thickness = 0.5.dp)
-        AboutSection()
+        AboutSection(copy)
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), thickness = 0.5.dp)
-        FeaturesSection()
+        FeaturesSection(copy)
         Spacer(modifier = Modifier.height(16.dp))
-        StatsRow()
+        StatsRow(copy)
         Spacer(modifier = Modifier.height(16.dp))
-        SupportSection()
+        SupportSection(copy)
     }
 }
 
 @Composable
-private fun HeroSection() {
+private fun HeroSection(copy: AppInfoCopy) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -70,7 +74,7 @@ private fun HeroSection() {
         )
         Spacer(modifier = Modifier.height(3.dp))
         Text(
-            text = "Version 1.0.0 · Free",
+            text = copy.versionPlan,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
@@ -81,7 +85,7 @@ private fun HeroSection() {
         }
         Spacer(modifier = Modifier.height(3.dp))
         Text(
-            text = "4.8 · 2,400 ratings",
+            text = copy.rating,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
         )
@@ -89,12 +93,12 @@ private fun HeroSection() {
 }
 
 @Composable
-private fun AboutSection() {
+private fun AboutSection(copy: AppInfoCopy) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
-        SectionLabel("About")
+        SectionLabel(copy.aboutTitle)
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Product Hunter is your ultimate smart shopping companion. Search any product and instantly compare prices, ratings, and shipping costs across all major e-commerce platforms — all in one place.",
+            text = copy.aboutBody,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
             lineHeight = 22.sp
@@ -103,18 +107,18 @@ private fun AboutSection() {
 }
 
 @Composable
-private fun FeaturesSection() {
+private fun FeaturesSection(copy: AppInfoCopy) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
-        SectionLabel("Features")
+        SectionLabel(copy.featuresTitle)
         Spacer(modifier = Modifier.height(10.dp))
         val divider = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        FeatureItem(Icons.Outlined.Search,        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),   MaterialTheme.colorScheme.primary,   "Multi-platform price search",  "Compare prices from all major stores in a single search.")
+        FeatureItem(Icons.Outlined.Search,        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),   MaterialTheme.colorScheme.primary,   copy.searchTitle, copy.searchDescription)
         HorizontalDivider(color = divider, thickness = 0.5.dp)
-        FeatureItem(Icons.Outlined.TableChart,    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),  MaterialTheme.colorScheme.tertiary,  "Comparison table",             "Side-by-side view of price, ratings & shipping fees.")
+        FeatureItem(Icons.Outlined.TableChart,    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),  MaterialTheme.colorScheme.tertiary,  copy.compareTitle, copy.compareDescription)
         HorizontalDivider(color = divider, thickness = 0.5.dp)
-        FeatureItem(Icons.AutoMirrored.Outlined.ShowChart,     MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f), MaterialTheme.colorScheme.secondary, "Price history chart",          "Track trends over time — know exactly when to buy.")
+        FeatureItem(Icons.AutoMirrored.Outlined.ShowChart,     MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f), MaterialTheme.colorScheme.secondary, copy.historyTitle, copy.historyDescription)
         HorizontalDivider(color = divider, thickness = 0.5.dp)
-        FeatureItem(Icons.Outlined.Notifications, MaterialTheme.colorScheme.error.copy(alpha = 0.12f),     MaterialTheme.colorScheme.error,     "Smart price alerts",           "Set a target price and get notified the moment it drops.")
+        FeatureItem(Icons.Outlined.Notifications, MaterialTheme.colorScheme.error.copy(alpha = 0.12f),     MaterialTheme.colorScheme.error,     copy.alertTitle, copy.alertDescription)
     }
 }
 
@@ -146,7 +150,7 @@ private fun FeatureItem(
 }
 
 @Composable
-private fun StatsRow() {
+private fun StatsRow(copy: AppInfoCopy) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -158,13 +162,13 @@ private fun StatsRow() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         val divColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-        StatItem("Free",    "Price")
+        StatItem(copy.free, copy.price)
         VerticalDivider(modifier = Modifier.height(36.dp), color = divColor)
-        StatItem("—",       "Size")
+        StatItem("—", copy.size)
         VerticalDivider(modifier = Modifier.height(36.dp), color = divColor)
-        StatItem("Android", "Platform")
+        StatItem("Android", copy.platform)
         VerticalDivider(modifier = Modifier.height(36.dp), color = divColor)
-        StatItem("4+",      "Age")
+        StatItem("4+", copy.age)
     }
 }
 
@@ -178,16 +182,16 @@ private fun StatItem(value: String, label: String) {
 }
 
 @Composable
-private fun SupportSection() {
+private fun SupportSection(copy: AppInfoCopy) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionLabel("Support")
+        SectionLabel(copy.supportTitle)
         Spacer(modifier = Modifier.height(4.dp))
         val divider = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        SupportItem(Icons.Outlined.Email,       "Contact us",       "support@producthunter.app")
+        SupportItem(Icons.Outlined.Email, copy.contactUs, "support@producthunter.app")
         HorizontalDivider(color = divider, thickness = 0.5.dp)
-        SupportItem(Icons.Outlined.Lock,        "Privacy Policy")
+        SupportItem(Icons.Outlined.Lock, copy.privacyPolicy)
         HorizontalDivider(color = divider, thickness = 0.5.dp)
-        SupportItem(Icons.Outlined.Description, "Terms of Service")
+        SupportItem(Icons.Outlined.Description, copy.termsOfService)
     }
 }
 
@@ -220,6 +224,86 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.primary,
         letterSpacing = 1.sp
     )
+}
+
+private data class AppInfoCopy(
+    val versionPlan: String,
+    val rating: String,
+    val aboutTitle: String,
+    val aboutBody: String,
+    val featuresTitle: String,
+    val searchTitle: String,
+    val searchDescription: String,
+    val compareTitle: String,
+    val compareDescription: String,
+    val historyTitle: String,
+    val historyDescription: String,
+    val alertTitle: String,
+    val alertDescription: String,
+    val free: String,
+    val price: String,
+    val size: String,
+    val platform: String,
+    val age: String,
+    val supportTitle: String,
+    val contactUs: String,
+    val privacyPolicy: String,
+    val termsOfService: String,
+)
+
+@Composable
+private fun appInfoCopy(languageMode: LanguageMode): AppInfoCopy {
+    val strings = LocalAppStrings.current
+    return when (languageMode) {
+        LanguageMode.ENGLISH -> AppInfoCopy(
+            versionPlan = "Version 1.0.0 · ${strings.freePlan}",
+            rating = "4.8 · 2,400 ratings",
+            aboutTitle = "About",
+            aboutBody = "Product Hunter is your smart shopping companion. Search any product and instantly compare prices, ratings, and shipping costs across major e-commerce platforms in one place.",
+            featuresTitle = "Features",
+            searchTitle = "Multi-platform price search",
+            searchDescription = "Compare prices from major stores in a single search.",
+            compareTitle = "Comparison table",
+            compareDescription = "Side-by-side view of price, ratings and shipping fees.",
+            historyTitle = "Price history chart",
+            historyDescription = "Track trends over time and know when to buy.",
+            alertTitle = "Smart price alerts",
+            alertDescription = "Set a target price and get notified when it drops.",
+            free = "Free",
+            price = "Price",
+            size = "Size",
+            platform = "Platform",
+            age = "Age",
+            supportTitle = "Support",
+            contactUs = "Contact us",
+            privacyPolicy = "Privacy Policy",
+            termsOfService = "Terms of Service",
+        )
+        LanguageMode.VIETNAMESE -> AppInfoCopy(
+            versionPlan = "Phiên bản 1.0.0 · ${strings.freePlan}",
+            rating = "4,8 · 2.400 lượt đánh giá",
+            aboutTitle = "Giới thiệu",
+            aboutBody = "Product Hunter là trợ lý mua sắm thông minh. Tìm kiếm sản phẩm và so sánh nhanh giá, đánh giá, phí vận chuyển trên các sàn thương mại điện tử lớn trong một nơi.",
+            featuresTitle = "Tính năng",
+            searchTitle = "Tìm giá đa nền tảng",
+            searchDescription = "So sánh giá từ các cửa hàng lớn chỉ với một lần tìm kiếm.",
+            compareTitle = "Bảng so sánh",
+            compareDescription = "Xem cạnh nhau giá bán, đánh giá và phí vận chuyển.",
+            historyTitle = "Biểu đồ lịch sử giá",
+            historyDescription = "Theo dõi xu hướng theo thời gian để biết lúc nên mua.",
+            alertTitle = "Thông báo giá thông minh",
+            alertDescription = "Đặt giá mục tiêu và nhận thông báo khi giá giảm.",
+            free = "Miễn phí",
+            price = "Giá",
+            size = "Dung lượng",
+            platform = "Nền tảng",
+            age = "Độ tuổi",
+            supportTitle = "Hỗ trợ",
+            contactUs = "Liên hệ",
+            privacyPolicy = "Chính sách bảo mật",
+            termsOfService = "Điều khoản dịch vụ",
+        )
+    }
 }
 
 @Preview(showBackground = true, widthDp = 393, heightDp = 852, name = "Samsung S24 Dark")

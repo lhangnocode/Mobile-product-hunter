@@ -77,8 +77,18 @@ data class AppStrings(
     val language: String,
     val english: String,
     val vietnamese: String,
+    val englishShort: String,
+    val vietnameseShort: String,
+    val historyEmptyTitle: String,
+    val historyEmptyDescription: String,
     val productHunterUser: String,
     val freePlan: String,
+    val forgotPassword: String,
+    val forgotPasswordDescription: String,
+    val sendResetLink: String,
+    val switchAccount: String,
+    val logOut: String,
+    val loadingAccount: String,
     val bestPrice: String,
     val marketplacePrices: String,
     val priceHistory: String,
@@ -174,8 +184,18 @@ data class AppStrings(
             language = "Language",
             english = "English",
             vietnamese = "Vietnamese",
+            englishShort = "EN",
+            vietnameseShort = "VI",
+            historyEmptyTitle = "No AI chats yet",
+            historyEmptyDescription = "Ask the AI Agent for help and your chats will appear here.",
             productHunterUser = "Product Hunter User",
             freePlan = "Free Plan",
+            forgotPassword = "Forgot Password",
+            forgotPasswordDescription = "Enter your email to receive a password reset link",
+            sendResetLink = "SEND LINK",
+            switchAccount = "Switch Account",
+            logOut = "Log out",
+            loadingAccount = "Loading account...",
             bestPrice = "BEST PRICE",
             marketplacePrices = "Marketplace prices",
             priceHistory = "Price history",
@@ -225,8 +245,8 @@ data class AppStrings(
             feed = "Bảng tin",
             search = "Tìm kiếm",
             wishlist = "Yêu thích",
-            alerts = "Cảnh báo",
-            priceAlerts = "Cảnh báo giá",
+            alerts = "Thông báo",
+            priceAlerts = "Thông báo giá",
             trendingDeals = "Deal nổi bật",
             seeAll = "Xem tất cả",
             profile = "Hồ sơ",
@@ -271,8 +291,18 @@ data class AppStrings(
             language = "Ngôn ngữ",
             english = "Tiếng Anh",
             vietnamese = "Tiếng Việt",
+            englishShort = "EN",
+            vietnameseShort = "VI",
+            historyEmptyTitle = "Chưa có cuộc trò chuyện AI",
+            historyEmptyDescription = "Hỏi Trợ lý AI để được hỗ trợ, các cuộc trò chuyện sẽ xuất hiện tại đây.",
             productHunterUser = "Người dùng Product Hunter",
             freePlan = "Gói miễn phí",
+            forgotPassword = "Quên mật khẩu",
+            forgotPasswordDescription = "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+            sendResetLink = "GỬI LIÊN KẾT",
+            switchAccount = "Đổi tài khoản",
+            logOut = "Đăng xuất",
+            loadingAccount = "Đang tải tài khoản...",
             bestPrice = "GIÁ TỐT NHẤT",
             marketplacePrices = "Giá tại các sàn TMĐT",
             priceHistory = "Lịch sử biến động giá",
@@ -366,8 +396,10 @@ fun compactPriceFromDisplayValue(value: Float, languageMode: LanguageMode): Stri
     if (languageMode == LanguageMode.ENGLISH) {
         when {
             value >= 1_000_000f -> String.format(Locale.US, "$%.1fM", value / 1_000_000f)
-            value >= 1_000f -> String.format(Locale.US, "$%.0fK", value / 1_000f)
-            else -> String.format(Locale.US, "$%.0f", value)
+            value >= 10_000f -> String.format(Locale.US, "$%.1fK", value / 1_000f)
+            else -> "$" + NumberFormat.getNumberInstance(Locale.US).apply {
+                maximumFractionDigits = 0
+            }.format(value)
         }
     } else {
         when {

@@ -8,6 +8,7 @@ import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.Card
@@ -55,6 +57,12 @@ fun AlertCard(
 ) {
     val strings = LocalAppStrings.current
     val currentPrice = alert.currentPrice
+    val isTargetReached = alert.targetReached
+    val cardBorder = if (isTargetReached) {
+        BorderStroke(1.25.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.72f))
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+    }
     val progress = if (currentPrice != null && currentPrice > 0.0) {
         ((currentPrice - alert.targetPrice) / currentPrice)
     } else {
@@ -70,7 +78,8 @@ fun AlertCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = cardBorder,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isTargetReached) 4.dp else 3.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Product row
@@ -124,15 +133,13 @@ fun AlertCard(
             Spacer(Modifier.height(10.dp))
 
             // Progress bar
-            PriceProgressBar(progress = progress)
+            PriceProgressBar(progress = progress, targetReached = isTargetReached)
 
             Spacer(Modifier.height(8.dp))
 
-            Text(
-                text = alert.statusText,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (alert.targetReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+            AlertStatusIndicator(
+                statusText = alert.statusText,
+                targetReached = isTargetReached,
             )
         }
     }
@@ -191,12 +198,20 @@ private fun PriceColumn(label: String, price: Double?, highlight: Boolean) {
 }
 
 @Composable
-private fun PriceProgressBar(progress: Float) {
+private fun PriceProgressBar(progress: Float, targetReached: Boolean) {
     val animated by animateFloatAsState(
         targetValue = progress,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "price_progress",
     )
+    val activeColors = if (targetReached) {
+        listOf(
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.82f),
+            MaterialTheme.colorScheme.tertiary,
+        )
+    } else {
+        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,9 +226,43 @@ private fun PriceProgressBar(progress: Float) {
                 .clip(RoundedCornerShape(50))
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
+                        colors = activeColors,
                     ),
                 ),
+        )
+    }
+}
+
+@Composable
+private fun AlertStatusIndicator(statusText: String, targetReached: Boolean) {
+    if (targetReached) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.48f))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(15.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = statusText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+    } else {
+        Text(
+            text = statusText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }

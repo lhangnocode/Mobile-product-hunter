@@ -13,10 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.navigation.Route
 
 @Composable
 fun SearchHistoryScreen(navController: NavController) {
+    val strings = LocalAppStrings.current
     val historyItems = listOf(
         "Compare Samsung Tab S10 vs iPad Mini",
         "Best laptop for AI under 20M",
@@ -38,7 +40,7 @@ fun SearchHistoryScreen(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "History",
+                    text = strings.history,
                     style = MaterialTheme.typography.titleMedium
                 )
                 TextButton(onClick = { /* Clear all */ }) {
