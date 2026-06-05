@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
@@ -206,6 +205,24 @@ fun PriceAlertsScreen(
         }
     }
 
+    val onTriggerPriceCheck = {
+        val needsNotificationPermission =
+            notificationsEnabled &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) != PackageManager.PERMISSION_GRANTED
+
+        if (needsNotificationPermission) {
+            notificationPermissionLauncher.launch(
+                Manifest.permission.POST_NOTIFICATIONS,
+            )
+        } else {
+            viewModel.trigger()
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
@@ -216,33 +233,29 @@ fun PriceAlertsScreen(
                 contentPadding = PaddingValues(bottom = 16.dp),
             ) {
                 item {
-                    PageHeader(
-                        isTriggering = triggerState is UiState.Loading,
-                        isClearing = deleteAllState is UiState.Loading,
-                        hasAlerts = alerts.isNotEmpty(),
-                        onTriggerClick = {
-                            val needsNotificationPermission =
-                                notificationsEnabled &&
-                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.POST_NOTIFICATIONS,
-                                    ) != PackageManager.PERMISSION_GRANTED
-
-                            if (needsNotificationPermission) {
-                                notificationPermissionLauncher.launch(
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                )
-                            } else {
-                                viewModel.trigger()
-                            }
-                        },
-                        onClearAllClick = { viewModel.deleteAll() },
+                    SummaryActionPanel(
+                        title = strings.priceAlerts,
+                        count = alerts.size,
+                        icon = Icons.Default.Notifications,
+                        contentPadding = PaddingValues(
+                            horizontal = PHSpacing.ScreenHorizontal,
+                            vertical = PHSpacing.ScreenVertical,
+                        ),
+                        actions = listOf(
+                            checkSummaryAction(
+                                label = strings.runCheck,
+                                onClick = onTriggerPriceCheck,
+                                enabled = triggerState !is UiState.Loading,
+                                loading = triggerState is UiState.Loading,
+                            ),
+                            clearSummaryAction(
+                                label = strings.clearAll,
+                                onClick = { viewModel.deleteAll() },
+                                enabled = alerts.isNotEmpty() && deleteAllState !is UiState.Loading,
+                                loading = deleteAllState is UiState.Loading,
+                            ),
+                        ),
                     )
-                }
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    PriceAlertCounterPanel(alertCount = alerts.size)
                     Spacer(Modifier.height(16.dp))
                 }
                 when (alertsState) {
@@ -343,151 +356,6 @@ private fun TopBar() {
                 modifier = Modifier.size(20.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun PriceAlertCounterPanel(alertCount: Int) {
-    val strings = LocalAppStrings.current
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PHSpacing.ScreenHorizontal),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = strings.priceAlerts,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Text(
-                    text = alertCount.toString(),
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-    }
-}
-
-// ─── Page Header ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun PageHeader(
-    isTriggering: Boolean,
-    isClearing: Boolean,
-    hasAlerts: Boolean,
-    onTriggerClick: () -> Unit,
-    onClearAllClick: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Button(
-            onClick = onClearAllClick,
-            enabled = hasAlerts && !isClearing,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            if (isClearing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onError,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onError,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = strings.clearAll,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onError,
-                lineHeight = 16.sp,
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Button(
-            onClick = onTriggerClick,
-            enabled = !isTriggering,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            if (isTriggering) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = strings.runCheck,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondary,
-                lineHeight = 16.sp,
-            )
-        }
-
     }
 }
 

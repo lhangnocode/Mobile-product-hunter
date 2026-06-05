@@ -1,11 +1,10 @@
 package android.app.producthunt.ui.screens
 
-import android.app.producthunt.R
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.viewmodel.AuthViewModel
-import androidx.compose.foundation.Image
+import android.widget.ImageView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,13 +39,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -88,11 +88,7 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.product_logo),
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(100.dp)
-                )
+                LoginAppIcon(modifier = Modifier.size(100.dp))
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -201,6 +197,23 @@ fun LoginScreen(
             }
         }
     }
+}
+
+@Composable
+private fun LoginAppIcon(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    AndroidView(
+        modifier = modifier,
+        factory = {
+            ImageView(it).apply {
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+            }
+        },
+        update = { imageView ->
+            imageView.setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+        },
+    )
 }
 
 @Preview(showBackground = true)

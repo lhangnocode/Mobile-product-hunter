@@ -10,7 +10,6 @@ import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +40,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,80 +94,21 @@ fun WishlistScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
-            WishlistCounterPanel(
+            SummaryActionPanel(
+                title = strings.wishlist,
                 count = wishlistCount,
-                hasItems = wishlistCount > 0,
-                onClearAll = { wishlistViewModel.removeAll() },
+                icon = Icons.Default.Favorite,
+                actions = listOf(
+                    clearSummaryAction(
+                        label = strings.clearAll,
+                        onClick = { wishlistViewModel.removeAll() },
+                        enabled = wishlistCount > 0,
+                        loading = removeState is UiState.Loading,
+                    ),
+                ),
             )
             
             SavedProductsContent(wishlistState, navController, wishlistViewModel)
-        }
-    }
-}
-
-@Composable
-private fun WishlistCounterPanel(
-    count: Int,
-    hasItems: Boolean,
-    onClearAll: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = strings.wishlist,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "$count",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-
-            TextButton(
-                onClick = onClearAll,
-                enabled = hasItems,
-            ) {
-                Text(
-                    text = strings.clearAll.replace("\n", " "),
-                    color = if (hasItems) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
         }
     }
 }
