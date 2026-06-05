@@ -1,6 +1,7 @@
 package android.app.producthunt.ui.screens
 
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 fun ForgotPasswordScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val strings = LocalAppStrings.current
     var email by remember { mutableStateOf("") }
     val forgotPasswordState by viewModel.forgotPasswordState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -53,7 +55,7 @@ fun ForgotPasswordScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+                    text = strings.forgotPasswordDescription,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
@@ -94,7 +96,7 @@ fun ForgotPasswordScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("GỬI LIÊN KẾT", fontWeight = FontWeight.Bold)
+                        Text(strings.sendResetLink, fontWeight = FontWeight.Bold)
                     }
                 }
             }

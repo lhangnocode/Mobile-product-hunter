@@ -283,7 +283,7 @@ fun AppDrawerContent(
 
         Spacer(Modifier.height(8.dp))
 
-        Text("History", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+        Text(strings.history, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
 
         if (agentConversations.isEmpty()) {
             EmptyHistoryPlaceholder(
