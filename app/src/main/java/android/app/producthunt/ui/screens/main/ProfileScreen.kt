@@ -2,6 +2,7 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.ui.components.UserAvatar
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ fun ProfileScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     val scrollState = rememberScrollState()
     val currentUserState by viewModel.currentUserState.collectAsState()
     val currentUser = (currentUserState as? UiState.Success)?.data
@@ -77,13 +79,13 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: "Product Hunter User",
+                text = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: strings.productHunterUser,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
-                text = currentUser?.email ?: "Loading account...",
+                text = currentUser?.email ?: strings.loadingAccount,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -92,25 +94,26 @@ fun ProfileScreen(
 
             ProfileInfoCard(
                 email = currentUser?.email,
+                loadingAccountText = strings.loadingAccount,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             ProfileMenuItem(
                 icon = Icons.Default.LockReset,
-                title = "Forgot Password",
+                title = strings.forgotPassword,
                 onClick = { navController.navigate(Route.FORGOT_PASSWORD) }
             )
 
             ProfileMenuItem(
                 icon = Icons.Default.ManageAccounts,
-                title = "Switch Account",
+                title = strings.switchAccount,
                 onClick = signOutToLogin
             )
 
             ProfileMenuItem(
                 icon = Icons.AutoMirrored.Filled.Logout,
-                title = "Log Out",
+                title = strings.logOut,
                 textColor = MaterialTheme.colorScheme.error,
                 onClick = signOutToLogin
             )
@@ -121,6 +124,7 @@ fun ProfileScreen(
 @Composable
 private fun ProfileInfoCard(
     email: String?,
+    loadingAccountText: String,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -128,7 +132,7 @@ private fun ProfileInfoCard(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            ProfileInfoRow(label = "Email", value = email ?: "Loading account...")
+            ProfileInfoRow(label = "Email", value = email ?: loadingAccountText)
         }
     }
 }

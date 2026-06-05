@@ -12,6 +12,7 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.ui.i18n.AppStrings
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.ProductHunterLocale
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
@@ -101,7 +102,8 @@ class MainActivity : ComponentActivity() {
                 val currentConversationId = backStackEntry?.arguments
                     ?.getString("conversationId")
                     ?.takeIf { it != "new" }
-                val chrome = currentRoute.toChromeConfig()
+                val strings = LocalAppStrings.current
+                val chrome = currentRoute.toChromeConfig(strings)
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -388,7 +390,7 @@ fun AppDrawerContent(
         }
 
         NavigationDrawerItem(
-            label = { Text("App Information") },
+            label = { Text(strings.appInformation) },
             selected = false,
             onClick = { onAppInformation() },
             icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
@@ -539,47 +541,47 @@ private data class ChromeConfig(
     val showSearchAction: Boolean = false,
 )
 
-private fun String?.toChromeConfig(): ChromeConfig =
+private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
     when (this) {
         Route.FEED -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Feed",
+            title = strings.feed,
             showBottomBar = true,
         )
         Route.SEARCH -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Search",
+            title = strings.search,
             showBottomBar = true,
         )
         Route.WISHLIST -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Wishlist",
+            title = strings.wishlist,
             showBottomBar = true,
         )
         Route.ALERTS -> ChromeConfig(
             topBar = TopBarType.Main,
-            title = "Price Alerts",
+            title = strings.priceAlerts,
             showBottomBar = true,
         )
         Route.PROFILE -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "Profile",
+            title = strings.profile,
         )
         Route.SEARCH_HISTORY -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "History",
+            title = strings.history,
         )
         Route.PRODUCT_DETAIL -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "Details",
+            title = strings.details,
         )
         Route.APP_INFORMATION -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "App Information",
+            title = strings.appInformation,
         )
         Route.AGENT_MANAGEMENT -> ChromeConfig(
             topBar = TopBarType.Child,
-            title = "AI Agent",
+            title = strings.aiAgent,
         )
         else -> ChromeConfig()
     }

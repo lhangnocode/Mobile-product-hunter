@@ -82,7 +82,7 @@ fun ProductGridCard(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(22.dp),
                 ) {
                     IconButton(
                         onClick = onPriceAlertClick,
