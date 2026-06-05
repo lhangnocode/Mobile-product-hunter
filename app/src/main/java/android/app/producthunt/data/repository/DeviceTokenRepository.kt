@@ -4,7 +4,6 @@ import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.ApiErrorParser
 import android.app.producthunt.data.remote.api.DeviceTokenApiService
 import android.app.producthunt.data.remote.dto.DeviceTokenRequest
-import android.net.Uri
 import javax.inject.Inject
 
 class DeviceTokenRepository @Inject constructor(
@@ -18,7 +17,7 @@ class DeviceTokenRepository @Inject constructor(
     }
 
     suspend fun delete(token: String): UiState<Unit> = try {
-        api.delete(Uri.encode(token))
+        api.delete(token)
         UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(ApiErrorParser.messageFrom(e, "Failed to delete device token"))

@@ -38,7 +38,10 @@ class FcmTokenRegistrar @Inject constructor(
         }
 
         when (val result = deviceTokenRepository.register(token)) {
-            is UiState.Success -> fcmTokenDataStore.saveLastToken(token)
+            is UiState.Success -> {
+                fcmTokenDataStore.saveLastToken(token)
+                Log.i(TAG, "FCM token registered with backend: ${token.preview()}")
+            }
             is UiState.Error -> Log.w(TAG, "FCM token registration failed: ${result.message}")
             else -> Unit
         }
@@ -49,6 +52,7 @@ class FcmTokenRegistrar @Inject constructor(
         if (!token.isNullOrBlank() && hasAuthenticatedSession()) {
             when (val result = deviceTokenRepository.delete(token)) {
                 is UiState.Error -> Log.w(TAG, "FCM token deletion failed: ${result.message}")
+                is UiState.Success -> Log.i(TAG, "FCM token deactivated on backend: ${token.preview()}")
                 else -> Unit
             }
         }
@@ -77,3 +81,6 @@ class FcmTokenRegistrar @Inject constructor(
         private const val TAG = "FcmTokenRegistrar"
     }
 }
+
+private fun String.preview(): String =
+    if (length <= 12) this else "${take(6)}...${takeLast(6)}"

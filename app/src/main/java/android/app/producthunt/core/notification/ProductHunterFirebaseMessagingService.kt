@@ -13,6 +13,7 @@ class ProductHunterFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var fcmTokenRegistrar: FcmTokenRegistrar
     @Inject lateinit var notificationNotifier: PriceAlertNotificationNotifier
     @Inject lateinit var themePreferencesDataStore: ThemePreferencesDataStore
+    @Inject lateinit var priceAlertRefreshEvents: PriceAlertRefreshEvents
 
     override fun onNewToken(token: String) {
         runBlocking {
@@ -22,6 +23,8 @@ class ProductHunterFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val payload = PriceAlertNotificationPayload.fromData(message.data) ?: return
+        priceAlertRefreshEvents.requestRefresh()
+
         val notificationsEnabled = runBlocking {
             themePreferencesDataStore.priceAlertNotificationsEnabled.first()
         }

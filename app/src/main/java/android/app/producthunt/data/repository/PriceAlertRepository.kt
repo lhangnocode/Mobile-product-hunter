@@ -3,8 +3,6 @@ package android.app.producthunt.data.repository
 import android.app.producthunt.data.remote.api.PriceAlertApiService
 import android.app.producthunt.data.remote.dto.PriceAlertCreate
 import android.app.producthunt.data.remote.dto.PriceAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertRequest
 import android.app.producthunt.core.state.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,15 +52,6 @@ class PriceAlertRepository @Inject constructor(
         UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to delete alert")
-    }
-
-    suspend fun trigger(
-        productId: String? = null,
-        platformProductId: String? = null,
-    ): UiState<TriggerAlertResponse> = try {
-        UiState.Success(api.trigger(TriggerAlertRequest(productId, platformProductId)))
-    } catch (e: Exception) {
-        UiState.Error(e.message ?: "Failed to trigger alert")
     }
 
     fun clear() {

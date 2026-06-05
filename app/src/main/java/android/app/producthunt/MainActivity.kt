@@ -132,6 +132,9 @@ class MainActivity : ComponentActivity() {
                 var hasPostNotificationPermission by remember {
                     mutableStateOf(currentPostNotificationPermission)
                 }
+                var hasRequestedPostNotificationPermission by remember {
+                    mutableStateOf(false)
+                }
                 LaunchedEffect(currentPostNotificationPermission) {
                     hasPostNotificationPermission = currentPostNotificationPermission
                 }
@@ -143,6 +146,22 @@ class MainActivity : ComponentActivity() {
                     hasPostNotificationPermission = isGranted
                     if (isGranted) {
                         themeViewModel.setPriceAlertNotificationsEnabled(true)
+                    }
+                }
+                LaunchedEffect(
+                    isAuthenticated,
+                    priceAlertNotificationsEnabled,
+                    hasPostNotificationPermission,
+                ) {
+                    if (
+                        isAuthenticated &&
+                            priceAlertNotificationsEnabled &&
+                            !hasPostNotificationPermission &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            !hasRequestedPostNotificationPermission
+                    ) {
+                        hasRequestedPostNotificationPermission = true
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
                 val onPriceAlertNotificationsChange: (Boolean) -> Unit = { enabled ->

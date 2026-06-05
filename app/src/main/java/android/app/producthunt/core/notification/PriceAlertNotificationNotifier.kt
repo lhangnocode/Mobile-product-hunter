@@ -21,6 +21,10 @@ import javax.inject.Singleton
 class PriceAlertNotificationNotifier @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
+    fun ensurePriceAlertChannel() {
+        createChannel()
+    }
+
     @SuppressLint("MissingPermission")
     fun showTriggeredAlert(count: Int) {
         if (count <= 0 || !hasNotificationPermission()) return
@@ -122,7 +126,7 @@ class PriceAlertNotificationNotifier @Inject constructor(
     }
 
     private companion object {
-        private const val CHANNEL_ID = "price_alerts"
+        const val CHANNEL_ID = "price_alerts"
         private const val NOTIFICATION_ID = 1001
     }
 }

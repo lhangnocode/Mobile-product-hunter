@@ -1,6 +1,5 @@
 package android.app.producthunt.ui.screens.main
 
-import android.Manifest
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.model.PriceAlert
@@ -9,10 +8,6 @@ import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -77,7 +73,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -86,8 +81,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.delay
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -103,16 +98,15 @@ fun PriceAlertsScreen(
     val strings = LocalAppStrings.current
     val alertsState by viewModel.alertsState.collectAsState()
     val createState by viewModel.createState.collectAsState()
-    val triggerState by viewModel.triggerState.collectAsState()
     val deleteAllState by viewModel.deleteAllState.collectAsState()
     val deleteState by viewModel.deleteState.collectAsState()
-    val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) {
-        viewModel.trigger()
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(PRICE_ALERT_REFRESH_INTERVAL_MS)
+            viewModel.loadAlerts()
+        }
     }
 
     val alerts = when (val s = alertsState) {
@@ -126,7 +120,6 @@ fun PriceAlertsScreen(
             val productDetails = listOfNotNull(
                 dto.product?.brand,
                 dto.product?.category,
-                if (dto.isActive) strings.activeAlert else strings.paused,
             ).joinToString(" • ")
             PriceAlert(
                 id = index,
@@ -153,23 +146,6 @@ fun PriceAlertsScreen(
             is UiState.Error -> {
                 snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
                 viewModel.resetCreateState()
-            }
-            else -> Unit
-        }
-    }
-
-    LaunchedEffect(triggerState) {
-        when (val state = triggerState) {
-            is UiState.Success -> {
-                snackbarHostState.showSnackbar(
-                    state.data.message ?: strings.priceCheckStarted,
-                    duration = SnackbarDuration.Short,
-                )
-                viewModel.resetTriggerState()
-            }
-            is UiState.Error -> {
-                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
-                viewModel.resetTriggerState()
             }
             else -> Unit
         }
@@ -217,26 +193,8 @@ fun PriceAlertsScreen(
             ) {
                 item {
                     PageHeader(
-                        isTriggering = triggerState is UiState.Loading,
                         isClearing = deleteAllState is UiState.Loading,
                         hasAlerts = alerts.isNotEmpty(),
-                        onTriggerClick = {
-                            val needsNotificationPermission =
-                                notificationsEnabled &&
-                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.POST_NOTIFICATIONS,
-                                    ) != PackageManager.PERMISSION_GRANTED
-
-                            if (needsNotificationPermission) {
-                                notificationPermissionLauncher.launch(
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                )
-                            } else {
-                                viewModel.trigger()
-                            }
-                        },
                         onClearAllClick = { viewModel.deleteAll() },
                     )
                 }
@@ -301,6 +259,8 @@ fun PriceAlertsScreen(
     }
 }
 
+private const val PRICE_ALERT_REFRESH_INTERVAL_MS = 30_000L
+
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 @Composable
@@ -352,7 +312,8 @@ private fun PriceAlertCounterPanel(alertCount: Int) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = PHSpacing.ScreenHorizontal),
+            .padding(horizontal = PHSpacing.ScreenHorizontal)
+            .heightIn(min = CounterPanelMinHeight),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -406,14 +367,14 @@ private fun PriceAlertCounterPanel(alertCount: Int) {
     }
 }
 
+private val CounterPanelMinHeight = 82.dp
+
 // ─── Page Header ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun PageHeader(
-    isTriggering: Boolean,
     isClearing: Boolean,
     hasAlerts: Boolean,
-    onTriggerClick: () -> Unit,
     onClearAllClick: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
@@ -447,47 +408,13 @@ private fun PageHeader(
             }
             Spacer(Modifier.width(6.dp))
             Text(
-                text = strings.clearAll,
+                text = strings.clearAll.replace("\n", " "),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onError,
                 lineHeight = 16.sp,
             )
         }
-
-        Spacer(Modifier.width(12.dp))
-
-        Button(
-            onClick = onTriggerClick,
-            enabled = !isTriggering,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            if (isTriggering) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = strings.runCheck,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondary,
-                lineHeight = 16.sp,
-            )
-        }
-
     }
 }
 
