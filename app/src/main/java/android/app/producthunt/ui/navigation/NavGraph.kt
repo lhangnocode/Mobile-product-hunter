@@ -122,9 +122,7 @@ fun AppNavGraph(
 
         composable(Route.ALERTS) {
             PriceAlertsScreen(
-                onNavigateToHunt = { navController.navigate(Route.FEED) },
-                onNavigateToDeals = { navController.navigate(Route.FEED) }, // Adjusting to Feed
-                onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
+                // Adjusting to Feed
                 onProductSelected = { productId, platformProductId, imageUrl, productName ->
                     val encodedImage = imageUrl?.let {
                         java.net.URLEncoder.encode(it, java.nio.charset.StandardCharsets.UTF_8.toString())

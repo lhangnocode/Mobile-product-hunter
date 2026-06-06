@@ -1,17 +1,19 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.local.LanguageMode
 import android.app.producthunt.data.remote.dto.WishlistResponse
+import android.app.producthunt.ui.i18n.AppStrings
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.LocalLanguageMode
 import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHIcons
-import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.theme.PHSpacing
+import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +27,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -68,7 +70,6 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun WishlistScreen(
     navController: NavController,
-    modifier: Modifier = Modifier,
     wishlistViewModel: WishlistViewModel = hiltViewModel(),
 ) {
     val strings = LocalAppStrings.current
@@ -94,22 +95,40 @@ fun WishlistScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val languageMode = LocalLanguageMode.current
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = padding.calculateTopPadding(),
+                bottom = padding.calculateBottomPadding() + 16.dp,
+            ),
+        ) {
             val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
-            WishlistHeaderActions(
-                isClearing = removeState is UiState.Loading,
-                hasItems = wishlistCount > 0,
-                onClearAll = { wishlistViewModel.removeAll() },
+
+            item {
+                WishlistHeaderActions(
+                    isClearing = removeState is UiState.Loading,
+                    hasItems = wishlistCount > 0,
+                    onClearAll = { wishlistViewModel.removeAll() },
+                )
+            }
+            item {
+                Spacer(Modifier.height(20.dp))
+                WishlistCounterPanel(count = wishlistCount)
+                Spacer(Modifier.height(16.dp))
+            }
+
+            savedProductsContent(
+                state = wishlistState,
+                navController = navController,
+                viewModel = wishlistViewModel,
+                strings = strings,
+                languageMode = languageMode,
             )
-            WishlistCounterPanel(
-                count = wishlistCount,
-            )
-            
-            SavedProductsContent(wishlistState, navController, wishlistViewModel)
         }
     }
 }
@@ -226,66 +245,71 @@ private fun WishlistCounterPanel(
 
 private val CounterPanelMinHeight = 82.dp
 
-@Composable
-private fun SavedProductsContent(
+private fun LazyListScope.savedProductsContent(
     state: UiState<List<WishlistResponse>>,
     navController: NavController,
-    viewModel: WishlistViewModel
+    viewModel: WishlistViewModel,
+    strings: AppStrings,
+    languageMode: LanguageMode,
 ) {
-    val strings = LocalAppStrings.current
-    val languageMode = LocalLanguageMode.current
     when (state) {
-        is UiState.Loading, UiState.Idle -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        is UiState.Loading, UiState.Idle -> item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = PH_Primary)
             }
         }
-        is UiState.Error -> {
-            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        is UiState.Error -> item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(text = "Error: ${state.message}", color = MaterialTheme.colorScheme.error)
             }
         }
         is UiState.Success -> {
             if (state.data.isEmpty()) {
-                EmptyWishlistState()
+                item { EmptyWishlistState() }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(1),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(state.data) { item ->
-                        val p = item.product
-                        val name = p?.productName
-                            ?: item.productName
-                            ?: item.rawName
-                            ?: item.normalizedName
-                            ?: strings.trackedProduct
-                        val image = p?.mainImageUrl ?: item.mainImageUrl
-                        
-                        WishlistProductCard(
-                            title = name,
-                            currentPrice = item.currentPrice?.let { formatPriceFromVnd(it, languageMode) } ?: strings.checking,
-                            imageUrl = image,
-                            onProductClick = {
-                                val encodedImage = image?.let {
-                                    URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
-                                }
-                                val route = buildString {
-                                    append("${Route.PRODUCT_DETAIL}/${item.productId}")
-                                    if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
-                                    append(if (encodedImage.isNullOrBlank()) "?" else "&")
-                                    append("platformProductId=${item.platformProductId}")
-                                    append("&")
-                                    append("productName=")
-                                    append(URLEncoder.encode(name, StandardCharsets.UTF_8.toString()))
-                                }
-                                navController.navigate(route)
-                            },
-                            onRemoveClick = { viewModel.remove(item.platformProductId) }
-                        )
-                    }
+                items(state.data) { item ->
+                    val p = item.product
+                    val name = p?.productName
+                        ?: item.productName
+                        ?: item.rawName
+                        ?: item.normalizedName
+                        ?: strings.trackedProduct
+                    val image = p?.mainImageUrl ?: item.mainImageUrl
+
+                    WishlistProductCard(
+                        modifier = Modifier.padding(horizontal = 22.dp),
+                        title = name,
+                        currentPrice = item.currentPrice?.let {
+                            formatPriceFromVnd(it, languageMode)
+                        } ?: strings.checking,
+                        imageUrl = image,
+                        onProductClick = {
+                            val encodedImage = image?.let {
+                                URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
+                            }
+                            val route = buildString {
+                                append("${Route.PRODUCT_DETAIL}/${item.productId}")
+                                if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                append(if (encodedImage.isNullOrBlank()) "?" else "&")
+                                append("platformProductId=${item.platformProductId}")
+                                append("&productName=")
+                                append(URLEncoder.encode(name, StandardCharsets.UTF_8.toString()))
+                            }
+                            navController.navigate(route)
+                        },
+                        onRemoveClick = { viewModel.remove(item.platformProductId) }
+                    )
+                    Spacer(Modifier.height(12.dp))
                 }
             }
         }
@@ -294,6 +318,7 @@ private fun SavedProductsContent(
 
 @Composable
 fun WishlistProductCard(
+    modifier: Modifier = Modifier,
     title: String,
     currentPrice: String,
     imageUrl: String?,
@@ -301,7 +326,7 @@ fun WishlistProductCard(
     onRemoveClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onProductClick),
         shape = RoundedCornerShape(16.dp),

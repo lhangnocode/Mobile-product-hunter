@@ -44,7 +44,10 @@ class WishlistRepository @Inject constructor(
 
     suspend fun remove(platformProductId: String): UiState<Unit> = try {
         api.remove(platformProductId)
-        refresh()
+        val current = (_wishlist.value as? UiState.Success)?.data
+        if (current != null) {
+            _wishlist.value = UiState.Success(current.filter { it.platformProductId != platformProductId })
+        }
         UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to remove from wishlist")
