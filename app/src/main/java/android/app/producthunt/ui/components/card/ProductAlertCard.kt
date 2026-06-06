@@ -5,13 +5,17 @@ import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.LocalLanguageMode
 import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,11 +36,12 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,16 +49,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+
 
 @Composable
 fun AlertCard(
     alert: PriceAlert,
-    onDeleteClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
     val strings = LocalAppStrings.current
@@ -72,9 +83,8 @@ fun AlertCard(
         .coerceIn(0f, 1f)
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -106,17 +116,6 @@ fun AlertCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
             }
 
             Spacer(Modifier.height(14.dp))
@@ -141,6 +140,96 @@ fun AlertCard(
                 statusText = alert.statusText,
                 targetReached = isTargetReached,
             )
+        }
+    }
+}
+
+@Composable
+fun SwipeToRevealAlertCard(
+    alert: PriceAlert,
+    onDeleteClick: () -> Unit = {},
+    onClick: () -> Unit = {},
+) {
+    val revealWidth = 72.dp
+    val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    fun snapClose() = scope.launch {
+        offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessMedium))
+    }
+    fun snapOpen() = scope.launch {
+        offsetX.animateTo(
+            -revealWidthPx,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+
+        // Outer container: padding + clip chung cho cả card lẫn nút xóa
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .clip(RoundedCornerShape(20.dp)),
+        ) {
+            // Nút xóa — matchParentSize lấy chiều cao từ card
+            Box(
+                modifier = Modifier.matchParentSize(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(revealWidth)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.error)
+                        .clickable { snapClose(); onDeleteClick() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Xóa",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+
+            // Card trượt — modifier = Modifier vì outer Box đã xử lý padding
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state = rememberDraggableState { delta ->
+                            scope.launch {
+                                offsetX.snapTo((offsetX.value + delta).coerceIn(-revealWidthPx, 0f))
+                            }
+                        },
+                        onDragStopped = {
+                            if (offsetX.value < -revealWidthPx * 0.4f) snapOpen() else snapClose()
+                        },
+                    ),
+            ) {
+                AlertCard(
+                    alert = alert,
+                    modifier = Modifier, // padding do outer Box xử lý
+                    onClick = {
+                        if (offsetX.value != 0f) snapClose() else onClick()
+                    },
+                )
+            }
         }
     }
 }

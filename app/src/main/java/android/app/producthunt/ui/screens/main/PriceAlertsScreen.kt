@@ -3,7 +3,7 @@ package android.app.producthunt.ui.screens.main
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.model.PriceAlert
-import android.app.producthunt.ui.components.card.AlertCard
+import android.app.producthunt.ui.components.card.SwipeToRevealAlertCard
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHSpacing
@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -154,7 +155,12 @@ fun PriceAlertsScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.offset(y = 32.dp)
+            )
+        },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize()) {
@@ -162,7 +168,7 @@ fun PriceAlertsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding() + 16.dp,
+                    bottom = padding.calculateBottomPadding(),
                 ),
             ) {
                 item {
@@ -205,7 +211,7 @@ fun PriceAlertsScreen(
                         } else {
                             items(alerts.size) { index ->
                                 val dto = (alertsState as UiState.Success).data[index]
-                                AlertCard(
+                                SwipeToRevealAlertCard(
                                     alert = alerts[index],
                                     onDeleteClick = { viewModel.delete(dto.platformProductId) },
                                     onClick = {
@@ -221,6 +227,9 @@ fun PriceAlertsScreen(
                             }
                         }
                     }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
