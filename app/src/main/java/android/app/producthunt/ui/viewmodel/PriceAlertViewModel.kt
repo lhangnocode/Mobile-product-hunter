@@ -1,10 +1,8 @@
 package android.app.producthunt.ui.viewmodel
 
-import android.app.producthunt.core.notification.PriceAlertNotificationNotifier
+import android.app.producthunt.core.notification.PriceAlertRefreshEvents
 import android.app.producthunt.core.state.UiState
-import android.app.producthunt.data.local.ThemePreferencesDataStore
 import android.app.producthunt.data.remote.dto.PriceAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertResponse
 import android.app.producthunt.data.repository.PriceAlertRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,25 +18,14 @@ import javax.inject.Inject
 @HiltViewModel
 class PriceAlertViewModel @Inject constructor(
     private val repository: PriceAlertRepository,
-    private val themePreferences: ThemePreferencesDataStore,
-    private val notificationNotifier: PriceAlertNotificationNotifier,
+    private val priceAlertRefreshEvents: PriceAlertRefreshEvents,
 ) : ViewModel() {
 
     val alertsState: StateFlow<UiState<List<PriceAlertResponse>>> = repository.alerts
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState.Idle)
 
-    val notificationsEnabled: StateFlow<Boolean> =
-        themePreferences.priceAlertNotificationsEnabled.stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            true,
-        )
-
     private val _createState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
     val createState: StateFlow<UiState<PriceAlertResponse>> = _createState.asStateFlow()
-
-    private val _triggerState = MutableStateFlow<UiState<TriggerAlertResponse>>(UiState.Idle)
-    val triggerState: StateFlow<UiState<TriggerAlertResponse>> = _triggerState.asStateFlow()
 
     private val _deleteAllState = MutableStateFlow<UiState<Int>>(UiState.Idle)
     val deleteAllState: StateFlow<UiState<Int>> = _deleteAllState.asStateFlow()
@@ -48,6 +35,11 @@ class PriceAlertViewModel @Inject constructor(
 
     init {
         loadAlerts()
+        viewModelScope.launch {
+            priceAlertRefreshEvents.events.collect {
+                repository.refresh()
+            }
+        }
     }
 
     fun loadAlerts() {
@@ -98,29 +90,8 @@ class PriceAlertViewModel @Inject constructor(
         }
     }
 
-    fun trigger(productId: String? = null) {
-        viewModelScope.launch {
-            _triggerState.value = UiState.Loading
-            val result = repository.trigger(productId)
-            if (result is UiState.Success && notificationsEnabled.value) {
-                notificationNotifier.showTriggeredAlert(result.data.notificationCount())
-            }
-            _triggerState.value = result
-        }
-    }
-
-    fun setNotificationsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            themePreferences.setPriceAlertNotificationsEnabled(enabled)
-        }
-    }
-
     fun resetCreateState() {
         _createState.value = UiState.Idle
-    }
-
-    fun resetTriggerState() {
-        _triggerState.value = UiState.Idle
     }
 
     fun resetDeleteAllState() {

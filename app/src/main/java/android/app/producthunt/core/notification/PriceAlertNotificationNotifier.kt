@@ -21,6 +21,10 @@ import javax.inject.Singleton
 class PriceAlertNotificationNotifier @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
+    fun ensurePriceAlertChannel() {
+        createChannel()
+    }
+
     @SuppressLint("MissingPermission")
     fun showTriggeredAlert(count: Int) {
         if (count <= 0 || !hasNotificationPermission()) return
@@ -60,6 +64,45 @@ class PriceAlertNotificationNotifier @Inject constructor(
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun showRemotePriceAlert(
+        title: String,
+        body: String,
+        payload: PriceAlertNotificationPayload,
+    ) {
+        if (!hasNotificationPermission()) return
+
+        createChannel()
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putPriceAlertPayload(payload)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            payload.productId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context)
+                .notify(NOTIFICATION_ID + payload.productId.hashCode(), notification)
+        } catch (_: SecurityException) {
+            // Notification permission may be revoked after the explicit check.
+        }
+    }
+
     private fun hasNotificationPermission(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(
@@ -83,7 +126,7 @@ class PriceAlertNotificationNotifier @Inject constructor(
     }
 
     private companion object {
-        private const val CHANNEL_ID = "price_alerts"
+        const val CHANNEL_ID = "price_alerts"
         private const val NOTIFICATION_ID = 1001
     }
 }

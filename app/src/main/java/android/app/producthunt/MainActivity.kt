@@ -13,6 +13,7 @@ import android.app.producthunt.ui.navigation.AppNavGraph
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.navigation.baseRoute
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.core.notification.PriceAlertNotificationPayload
 import android.app.producthunt.ui.i18n.AppStrings
 import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.ProductHunterLocale
@@ -22,6 +23,7 @@ import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.AgentConversationHistoryViewModel
 import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -60,6 +62,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import android.graphics.Color as AndroidColor
 
@@ -67,10 +70,12 @@ import android.graphics.Color as AndroidColor
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val themeViewModel: ThemeViewModel by viewModels()
+    private val pendingNotificationIntent = MutableStateFlow<Intent?>(null)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingNotificationIntent.value = intent
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
         )
@@ -106,6 +111,7 @@ class MainActivity : ComponentActivity() {
                 val isAuthenticated = (startupState as? UiState.Success)?.data == true
                 // Default to Search as per design vision
                 val startDestination = if (isAuthenticated) Route.SEARCH else Route.LOGIN
+                val notificationIntent by pendingNotificationIntent.collectAsState()
                 val agentHistoryViewModel: AgentConversationHistoryViewModel = hiltViewModel()
                 val agentConversations by agentHistoryViewModel.conversations.collectAsState()
                 val backStackEntry by navController.currentBackStackEntryAsState()
@@ -126,6 +132,9 @@ class MainActivity : ComponentActivity() {
                 var hasPostNotificationPermission by remember {
                     mutableStateOf(currentPostNotificationPermission)
                 }
+                var hasRequestedPostNotificationPermission by remember {
+                    mutableStateOf(false)
+                }
                 LaunchedEffect(currentPostNotificationPermission) {
                     hasPostNotificationPermission = currentPostNotificationPermission
                 }
@@ -139,6 +148,22 @@ class MainActivity : ComponentActivity() {
                         themeViewModel.setPriceAlertNotificationsEnabled(true)
                     }
                 }
+                LaunchedEffect(
+                    isAuthenticated,
+                    priceAlertNotificationsEnabled,
+                    hasPostNotificationPermission,
+                ) {
+                    if (
+                        isAuthenticated &&
+                            priceAlertNotificationsEnabled &&
+                            !hasPostNotificationPermission &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            !hasRequestedPostNotificationPermission
+                    ) {
+                        hasRequestedPostNotificationPermission = true
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
                 val onPriceAlertNotificationsChange: (Boolean) -> Unit = { enabled ->
                     if (!enabled) {
                         themeViewModel.setPriceAlertNotificationsEnabled(false)
@@ -146,6 +171,17 @@ class MainActivity : ComponentActivity() {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
                         themeViewModel.setPriceAlertNotificationsEnabled(true)
+                    }
+                }
+                LaunchedEffect(isAuthenticated, notificationIntent) {
+                    if (!isAuthenticated) return@LaunchedEffect
+
+                    val payload = PriceAlertNotificationPayload.fromIntent(notificationIntent)
+                    if (payload != null) {
+                        navController.navigate(payload.toProductDetailRoute()) {
+                            launchSingleTop = true
+                        }
+                        pendingNotificationIntent.value = null
                     }
                 }
                 SideEffect {
@@ -248,6 +284,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingNotificationIntent.value = intent
     }
 }
 
@@ -632,6 +674,14 @@ private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
             title = strings.forgotPassword,
         )
         else -> ChromeConfig()
+    }
+
+private fun PriceAlertNotificationPayload.toProductDetailRoute(): String =
+    buildString {
+        append("${Route.PRODUCT_DETAIL}/$productId")
+        if (!platformProductId.isNullOrBlank()) {
+            append("?platformProductId=$platformProductId")
+        }
     }
 
 @Composable

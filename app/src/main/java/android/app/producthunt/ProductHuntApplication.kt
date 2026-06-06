@@ -3,6 +3,7 @@ package android.app.producthunt
 import android.app.producthunt.core.agent.AgentOrchestrator
 import android.app.producthunt.core.agent.AgentToolSet
 import android.app.producthunt.core.log.ILog
+import android.app.producthunt.core.notification.PriceAlertNotificationNotifier
 import android.app.producthunt.data.repository.AgentConversationRepository
 import android.app.producthunt.data.repository.PlatformProductRepository
 import android.app.producthunt.data.repository.PriceRecordRepository
@@ -22,11 +23,13 @@ class ProductHuntApplication : Application() {
     @Inject lateinit var productRepository: ProductRepository
     @Inject lateinit var platformProductRepository: PlatformProductRepository
     @Inject lateinit var priceRecordRepository: PriceRecordRepository
+    @Inject lateinit var priceAlertNotificationNotifier: PriceAlertNotificationNotifier
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
         super.onCreate()
+        priceAlertNotificationNotifier.ensurePriceAlertChannel()
 
         val agentToolSet = AgentToolSet(
             productRepository = productRepository,

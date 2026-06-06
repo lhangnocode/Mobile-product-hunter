@@ -8,15 +8,16 @@ object PriceAlertStatusMapper {
             ?: alert.price
 
     fun isTargetReached(alert: PriceAlertResponse): Boolean {
-        val currentPrice = displayCurrentPrice(alert)
-        if (currentPrice != null) {
-            return currentPrice <= alert.targetPrice
-        }
-
         val normalizedStatus = alert.status?.trim()?.lowercase().orEmpty()
         return (
             alert.targetReached == true ||
                 alert.isTargetReached == true ||
+                alert.triggered == true ||
+                alert.isTriggered == true ||
+                !alert.triggeredAt.isNullOrBlank() ||
+                !alert.lastTriggeredAt.isNullOrBlank() ||
+                !alert.notifiedAt.isNullOrBlank() ||
+                !alert.lastNotifiedAt.isNullOrBlank() ||
                 normalizedStatus in reachedStatuses
             )
     }
@@ -25,6 +26,9 @@ object PriceAlertStatusMapper {
         if (isTargetReached(alert)) "Target reached!" else "Waiting for price drop"
 
     private val reachedStatuses = setOf(
+        "1",
+        "triggered",
+        "is_triggered",
         "target_reached",
         "target reached",
         "reached",
