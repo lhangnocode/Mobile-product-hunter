@@ -1,9 +1,9 @@
 package android.app.producthunt.ui.viewmodel
 
-import android.app.producthunt.data.remote.dto.PriceAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertResponse
-import android.app.producthunt.data.repository.PriceAlertRepository
+import android.app.producthunt.core.notification.PriceAlertRefreshEvents
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.PriceAlertResponse
+import android.app.producthunt.data.repository.PriceAlertRepository
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PriceAlertViewModel @Inject constructor(
     private val repository: PriceAlertRepository,
+    private val priceAlertRefreshEvents: PriceAlertRefreshEvents,
 ) : ViewModel() {
 
     val alertsState: StateFlow<UiState<List<PriceAlertResponse>>> = repository.alerts
@@ -26,14 +27,19 @@ class PriceAlertViewModel @Inject constructor(
     private val _createState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
     val createState: StateFlow<UiState<PriceAlertResponse>> = _createState.asStateFlow()
 
-    private val _triggerState = MutableStateFlow<UiState<TriggerAlertResponse>>(UiState.Idle)
-    val triggerState: StateFlow<UiState<TriggerAlertResponse>> = _triggerState.asStateFlow()
-
     private val _deleteAllState = MutableStateFlow<UiState<Int>>(UiState.Idle)
     val deleteAllState: StateFlow<UiState<Int>> = _deleteAllState.asStateFlow()
 
+    private val _deleteState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val deleteState: StateFlow<UiState<Unit>> = _deleteState.asStateFlow()
+
     init {
         loadAlerts()
+        viewModelScope.launch {
+            priceAlertRefreshEvents.events.collect {
+                repository.refresh()
+            }
+        }
     }
 
     fun loadAlerts() {
@@ -42,17 +48,21 @@ class PriceAlertViewModel @Inject constructor(
         }
     }
 
-    fun create(productId: String, targetPrice: Double) {
+    fun create(platformProductId: String, targetPrice: Double) {
         viewModelScope.launch {
             _createState.value = UiState.Loading
-            val result = repository.create(productId, targetPrice)
+            val result = repository.create(
+                platformProductId = platformProductId,
+                targetPrice = targetPrice,
+            )
             _createState.value = result
         }
     }
 
-    fun delete(productId: String) {
+    fun delete(platformProductId: String) {
         viewModelScope.launch {
-            repository.delete(productId)
+            _deleteState.value = UiState.Loading
+            _deleteState.value = repository.delete(platformProductId)
         }
     }
 
@@ -67,7 +77,7 @@ class PriceAlertViewModel @Inject constructor(
             _deleteAllState.value = UiState.Loading
             var deletedCount = 0
             currentAlerts.forEach { alert ->
-                when (repository.delete(alert.productId)) {
+                when (repository.delete(alert.platformProductId)) {
                     is UiState.Success -> deletedCount += 1
                     is UiState.Error -> {
                         _deleteAllState.value = UiState.Error("Failed to clear all alerts")
@@ -80,23 +90,15 @@ class PriceAlertViewModel @Inject constructor(
         }
     }
 
-    fun trigger(productId: String? = null) {
-        viewModelScope.launch {
-            _triggerState.value = UiState.Loading
-            val result = repository.trigger(productId)
-            _triggerState.value = result
-        }
-    }
-
     fun resetCreateState() {
         _createState.value = UiState.Idle
     }
 
-    fun resetTriggerState() {
-        _triggerState.value = UiState.Idle
-    }
-
     fun resetDeleteAllState() {
         _deleteAllState.value = UiState.Idle
+    }
+
+    fun resetDeleteState() {
+        _deleteState.value = UiState.Idle
     }
 }

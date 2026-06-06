@@ -32,12 +32,21 @@ interface AgentConversationDao {
     @Query("UPDATE agent_conversations SET updatedAt = :updatedAt WHERE id = :conversationId")
     suspend fun touchConversation(conversationId: String, updatedAt: Long)
 
+    @Query("DELETE FROM agent_messages WHERE conversationId = :conversationId")
+    suspend fun deleteMessagesForConversation(conversationId: String)
+
     @Query("DELETE FROM agent_conversations WHERE id = :conversationId")
-    suspend fun deleteConversation(conversationId: String)
+    suspend fun deleteConversationRow(conversationId: String)
 
     @Transaction
     suspend fun appendMessage(message: AgentMessageEntity) {
         insertMessage(message)
         touchConversation(message.conversationId, message.createdAt)
+    }
+
+    @Transaction
+    suspend fun deleteConversation(conversationId: String) {
+        deleteMessagesForConversation(conversationId)
+        deleteConversationRow(conversationId)
     }
 }

@@ -71,7 +71,6 @@ fun ProductHunterMainTopAppBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductHunterChildTopAppBar(
     title: String,
@@ -80,15 +79,34 @@ fun ProductHunterChildTopAppBar(
     onBack: () -> Unit,
     showSearchAction: Boolean = false,
     onSearchClick: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    TopAppBar(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        title = {
-            Column {
+        color = TopAppBarBlack,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .statusBarsPadding()
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -97,32 +115,24 @@ fun ProductHunterChildTopAppBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White.copy(alpha = 0.72f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-        },
-        actions = {
+
             if (showSearchAction) {
                 IconButton(onClick = onSearchClick) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White,
+                    )
                 }
+            } else {
+                Spacer(modifier = Modifier.size(48.dp))
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = TopAppBarBlack,
-            scrolledContainerColor = TopAppBarBlack,
-            navigationIconContentColor = Color.White,
-            titleContentColor = Color.White,
-            actionIconContentColor = Color.White,
-        ),
-        scrollBehavior = scrollBehavior,
-    )
+        }
+    }
 }

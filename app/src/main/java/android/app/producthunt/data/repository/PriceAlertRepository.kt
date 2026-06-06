@@ -3,8 +3,6 @@ package android.app.producthunt.data.repository
 import android.app.producthunt.data.remote.api.PriceAlertApiService
 import android.app.producthunt.data.remote.dto.PriceAlertCreate
 import android.app.producthunt.data.remote.dto.PriceAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertResponse
-import android.app.producthunt.data.remote.dto.TriggerAlertRequest
 import android.app.producthunt.core.state.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,26 +28,30 @@ class PriceAlertRepository @Inject constructor(
         }
     }
 
-    suspend fun create(productId: String, targetPrice: Double): UiState<PriceAlertResponse> = try {
-        val result = api.create(PriceAlertCreate(productId, targetPrice))
+    suspend fun create(
+        platformProductId: String,
+        productId: String? = null,
+        targetPrice: Double,
+    ): UiState<PriceAlertResponse> = try {
+        val result = api.create(
+            PriceAlertCreate(
+                platformProductId = platformProductId,
+                productId = productId,
+                targetPrice = targetPrice,
+            ),
+        )
         refresh()
         UiState.Success(result)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to create alert")
     }
 
-    suspend fun delete(productId: String): UiState<Unit> = try {
-        api.delete(productId)
+    suspend fun delete(platformProductId: String): UiState<Unit> = try {
+        api.delete(platformProductId)
         refresh()
         UiState.Success(Unit)
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Failed to delete alert")
-    }
-
-    suspend fun trigger(productId: String? = null): UiState<TriggerAlertResponse> = try {
-        UiState.Success(api.trigger(TriggerAlertRequest(productId)))
-    } catch (e: Exception) {
-        UiState.Error(e.message ?: "Failed to trigger alert")
     }
 
     fun clear() {

@@ -1,13 +1,13 @@
 package android.app.producthunt.ui.screens.main
 
-import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
 import android.app.producthunt.model.PriceAlert
 import android.app.producthunt.ui.components.card.AlertCard
-import android.app.producthunt.ui.screens.notify.MasterNotificationsCard
+import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
-import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
 import android.app.producthunt.ui.theme.PHSpacing
+import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Menu
@@ -60,19 +60,16 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,7 +82,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -95,14 +92,22 @@ fun PriceAlertsScreen(
     onNavigateToHunt: () -> Unit = {},
     onNavigateToDeals: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
-    onProductSelected: (String, String?) -> Unit = { _, _ -> },
+    onProductSelected: (String, String, String?, String?) -> Unit = { _, _, _, _ -> },
     viewModel: PriceAlertViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     val alertsState by viewModel.alertsState.collectAsState()
     val createState by viewModel.createState.collectAsState()
-    val triggerState by viewModel.triggerState.collectAsState()
     val deleteAllState by viewModel.deleteAllState.collectAsState()
+    val deleteState by viewModel.deleteState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(PRICE_ALERT_REFRESH_INTERVAL_MS)
+            viewModel.loadAlerts()
+        }
+    }
 
     val alerts = when (val s = alertsState) {
         is UiState.Success -> s.data.mapIndexed { index, dto ->
@@ -110,20 +115,20 @@ fun PriceAlertsScreen(
             val targetReached = PriceAlertStatusMapper.isTargetReached(dto)
             val productName = dto.product?.productName
                 ?: dto.productName
-                ?: "Tracked product"
+                ?: dto.rawName
+                ?: strings.trackedProduct
             val productDetails = listOfNotNull(
                 dto.product?.brand,
                 dto.product?.category,
-                if (dto.isActive) "Active alert" else "Paused",
             ).joinToString(" • ")
             PriceAlert(
                 id = index,
                 name = productName,
-                subtitle = productDetails.ifBlank { "Product ${dto.productId.take(8)}" },
+                subtitle = productDetails.ifBlank { strings.productFallback(dto.productId) },
                 imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
                 currentPrice = currentPrice,
                 targetPrice = dto.targetPrice,
-                statusText = PriceAlertStatusMapper.statusText(dto),
+                statusText = if (targetReached) strings.targetReached else strings.waitingForPriceDrop,
                 targetReached = targetReached,
                 placeholderColor = Color(0xFF1E1E2E),
                 placeholderIcon = Icons.Filled.Headphones,
@@ -132,48 +137,15 @@ fun PriceAlertsScreen(
         else -> emptyList()
     }
 
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
-    if (showSheet) {
-        AddAlertSheet(
-            sheetState = sheetState,
-            onDismiss = { showSheet = false },
-            onConfirm = { productId, targetPrice ->
-                viewModel.create(productId, targetPrice)
-                scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
-            },
-        )
-    }
-
     LaunchedEffect(createState) {
         when (val state = createState) {
             is UiState.Success -> {
-                snackbarHostState.showSnackbar("Price alert saved", duration = SnackbarDuration.Short)
+                snackbarHostState.showSnackbar(strings.priceAlertSaveSuccess, duration = SnackbarDuration.Short)
                 viewModel.resetCreateState()
             }
             is UiState.Error -> {
                 snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
                 viewModel.resetCreateState()
-            }
-            else -> Unit
-        }
-    }
-
-    LaunchedEffect(triggerState) {
-        when (val state = triggerState) {
-            is UiState.Success -> {
-                snackbarHostState.showSnackbar(
-                    state.data.message ?: "Price check started",
-                    duration = SnackbarDuration.Short,
-                )
-                viewModel.resetTriggerState()
-            }
-            is UiState.Error -> {
-                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
-                viewModel.resetTriggerState()
             }
             else -> Unit
         }
@@ -183,7 +155,7 @@ fun PriceAlertsScreen(
         when (val state = deleteAllState) {
             is UiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    if (state.data > 0) "Cleared ${state.data} price alerts" else "No price alerts to clear",
+                    if (state.data > 0) strings.clearedAlerts(state.data) else strings.noAlertsToClear,
                     duration = SnackbarDuration.Short,
                 )
                 viewModel.resetDeleteAllState()
@@ -191,6 +163,20 @@ fun PriceAlertsScreen(
             is UiState.Error -> {
                 snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
                 viewModel.resetDeleteAllState()
+            }
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(deleteState) {
+        when (val state = deleteState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(strings.priceAlertRemoved, duration = SnackbarDuration.Short)
+                viewModel.resetDeleteState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetDeleteState()
             }
             else -> Unit
         }
@@ -207,25 +193,15 @@ fun PriceAlertsScreen(
             ) {
                 item {
                     PageHeader(
-                        isTriggering = triggerState is UiState.Loading,
                         isClearing = deleteAllState is UiState.Loading,
                         hasAlerts = alerts.isNotEmpty(),
-                        onAddClick = { showSheet = true },
-                        onTriggerClick = { viewModel.trigger() },
                         onClearAllClick = { viewModel.deleteAll() },
                     )
                 }
                 item {
                     Spacer(Modifier.height(20.dp))
-                    MasterNotificationsCard(
-                        enabled = notificationsEnabled,
-                        onToggle = { notificationsEnabled = it },
-                    )
-                    Spacer(Modifier.height(24.dp))
-                }
-                item {
-                    SectionLabel("● ACTIVE PRECISION TRACKING")
-                    Spacer(Modifier.height(12.dp))
+                    PriceAlertCounterPanel(alertCount = alerts.size)
+                    Spacer(Modifier.height(16.dp))
                 }
                 when (alertsState) {
                     is UiState.Loading, UiState.Idle -> item {
@@ -247,7 +223,7 @@ fun PriceAlertsScreen(
                         if (alerts.isEmpty()) {
                             item {
                                 Text(
-                                    text = "No active price alerts",
+                                    text = strings.noActivePriceAlerts,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                                 )
@@ -257,8 +233,15 @@ fun PriceAlertsScreen(
                                 val dto = (alertsState as UiState.Success).data[index]
                                 AlertCard(
                                     alert = alerts[index],
-                                    onDeleteClick = { viewModel.delete(dto.productId) },
-                                    onClick = { onProductSelected(dto.productId, alerts[index].imageUrl) },
+                                    onDeleteClick = { viewModel.delete(dto.platformProductId) },
+                                    onClick = {
+                                        onProductSelected(
+                                            dto.productId,
+                                            dto.platformProductId,
+                                            alerts[index].imageUrl,
+                                            alerts[index].name,
+                                        )
+                                    },
                                 )
                                 Spacer(Modifier.height(12.dp))
                             }
@@ -267,7 +250,7 @@ fun PriceAlertsScreen(
                 }
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionLabel("◌ UPCOMING ALERTS")
+                    SectionLabel(strings.upcomingAlerts)
                     Spacer(Modifier.height(12.dp))
                     NoScheduledDropsCard()
                 }
@@ -275,6 +258,8 @@ fun PriceAlertsScreen(
         }
     }
 }
+
+private const val PRICE_ALERT_REFRESH_INTERVAL_MS = 30_000L
 
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
@@ -321,17 +306,78 @@ private fun TopBar() {
     }
 }
 
+@Composable
+private fun PriceAlertCounterPanel(alertCount: Int) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PHSpacing.ScreenHorizontal)
+            .heightIn(min = CounterPanelMinHeight),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.priceAlerts,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = alertCount.toString(),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+private val CounterPanelMinHeight = 82.dp
+
 // ─── Page Header ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun PageHeader(
-    isTriggering: Boolean,
     isClearing: Boolean,
     hasAlerts: Boolean,
-    onAddClick: () -> Unit,
-    onTriggerClick: () -> Unit,
     onClearAllClick: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -362,73 +408,10 @@ private fun PageHeader(
             }
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "Clear\nAll",
+                text = strings.clearAll.replace("\n", " "),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onError,
-                lineHeight = 16.sp,
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Button(
-            onClick = onTriggerClick,
-            enabled = !isTriggering,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            if (isTriggering) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "Run\nCheck",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondary,
-                lineHeight = 16.sp,
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Button(
-            onClick = onAddClick,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            modifier = Modifier.shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "Add New\nAlert",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
                 lineHeight = 16.sp,
             )
         }
@@ -453,6 +436,7 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun NoScheduledDropsCard() {
+    val strings = LocalAppStrings.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -483,14 +467,14 @@ private fun NoScheduledDropsCard() {
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "No Scheduled Drops",
+                text = strings.noScheduledDrops,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "You don't have any seasonal or recurring alerts set up. Track historical sales to anticipate the next big dip.",
+                text = strings.noScheduledDropsDescription,
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 19.sp,
@@ -498,7 +482,7 @@ private fun NoScheduledDropsCard() {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Browse Price History Trends",
+                text = strings.browsePriceHistoryTrends,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,

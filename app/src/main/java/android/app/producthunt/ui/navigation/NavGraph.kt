@@ -91,16 +91,29 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Route.SEARCH}?q={q}",
-            arguments = listOf(navArgument("q") { 
-                type = NavType.StringType
-                nullable = true
-                defaultValue = null
-            })
+            route = "${Route.SEARCH}?q={q}&conversationId={conversationId}",
+            arguments = listOf(
+                navArgument("q") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("conversationId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            )
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("q")
+            val conversationId = backStackEntry.arguments?.getString("conversationId")
             // SearchScreen will be the Chat-based interface
-            SearchScreen(navController = navController, initialQuery = query, authViewModel = authViewModel)
+            SearchScreen(
+                navController = navController,
+                initialQuery = query,
+                initialConversationId = conversationId,
+                authViewModel = authViewModel,
+            )
         }
 
         composable(Route.WISHLIST) {
@@ -112,13 +125,19 @@ fun AppNavGraph(
                 onNavigateToHunt = { navController.navigate(Route.FEED) },
                 onNavigateToDeals = { navController.navigate(Route.FEED) }, // Adjusting to Feed
                 onNavigateToSaved = { navController.navigate(Route.WISHLIST) },
-                onProductSelected = { productId, imageUrl ->
+                onProductSelected = { productId, platformProductId, imageUrl, productName ->
                     val encodedImage = imageUrl?.let {
+                        java.net.URLEncoder.encode(it, java.nio.charset.StandardCharsets.UTF_8.toString())
+                    }
+                    val encodedName = productName?.let {
                         java.net.URLEncoder.encode(it, java.nio.charset.StandardCharsets.UTF_8.toString())
                     }
                     val route = buildString {
                         append("${Route.PRODUCT_DETAIL}/$productId")
                         if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                        append(if (encodedImage.isNullOrBlank()) "?" else "&")
+                        append("platformProductId=$platformProductId")
+                        if (!encodedName.isNullOrBlank()) append("&productName=$encodedName")
                     }
                     navController.navigate(route)
                 },
@@ -135,7 +154,7 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}&productName={productName}",
+            route = "${Route.PRODUCT_DETAIL}/{productId}?imageUrl={imageUrl}&productName={productName}&platformProductId={platformProductId}",
             arguments = listOf(
                 navArgument("productId") { type = NavType.StringType },
                 navArgument("imageUrl") { 
@@ -147,13 +166,25 @@ fun AppNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("platformProductId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
             val imageUrl = backStackEntry.arguments?.getString("imageUrl")
             val productName = backStackEntry.arguments?.getString("productName")
-            ProductDetailScreen(navController = navController, productId = productId, imageUrl = imageUrl, productName = productName)
+            val platformProductId = backStackEntry.arguments?.getString("platformProductId")
+            ProductDetailScreen(
+                navController = navController,
+                productId = productId,
+                initialPlatformProductId = platformProductId,
+                imageUrl = imageUrl,
+                productName = productName,
+            )
         }
 
         composable(Route.SIGNUP) {

@@ -1,5 +1,6 @@
 package android.app.producthunt.data.repository
 
+import android.app.producthunt.core.notification.FcmTokenRegistrar
 import android.app.producthunt.data.local.TokenDataStore
 import android.app.producthunt.data.remote.ApiErrorParser
 import android.app.producthunt.data.remote.api.AuthApiService
@@ -10,6 +11,7 @@ import javax.inject.Inject
 class AuthRepository @Inject constructor(
     private val api: AuthApiService,
     private val tokenDataStore: TokenDataStore,
+    private val fcmTokenRegistrar: FcmTokenRegistrar,
 ) {
     suspend fun login(email: String, password: String): UiState<UserResponse> = try {
         val normalizedEmail = AuthAccountMatcher.normalizeEmail(email)
@@ -24,6 +26,7 @@ class AuthRepository @Inject constructor(
             return UiState.Error("Authenticated account does not match the login email")
         }
 
+        fcmTokenRegistrar.registerCurrentTokenIfAuthenticated()
         UiState.Success(user)
     } catch (e: Exception) {
         tokenDataStore.clearTokens()
@@ -84,11 +87,16 @@ class AuthRepository @Inject constructor(
         val refreshToken = tokenDataStore.getRefreshToken() ?: return UiState.Success(null)
         val response = api.refresh(RefreshTokenRequest(refreshToken))
         tokenDataStore.saveTokens(response.accessToken, response.refreshToken)
-        UiState.Success(api.me())
+        val user = api.me()
+        fcmTokenRegistrar.registerCurrentTokenIfAuthenticated()
+        UiState.Success(user)
     } catch (e: Exception) {
         tokenDataStore.clearTokens()
         UiState.Success(null)
     }
 
-    suspend fun logout() = tokenDataStore.clearTokens()
+    suspend fun logout() {
+        fcmTokenRegistrar.unregisterCurrentTokenIfAuthenticated()
+        tokenDataStore.clearTokens()
+    }
 }

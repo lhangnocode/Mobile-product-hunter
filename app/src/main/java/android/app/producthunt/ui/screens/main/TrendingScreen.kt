@@ -1,9 +1,14 @@
 package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.remote.dto.TrendingDealResponse
+import android.app.producthunt.data.remote.dto.detailPlatformProductId
 import android.app.producthunt.data.remote.dto.detailProductId
 import android.app.producthunt.data.remote.dto.discountLabel
 import android.app.producthunt.ui.components.card.ProductGridCard
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.theme.PH_Primary
@@ -21,11 +26,18 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -41,11 +53,51 @@ fun TrendingScreen(
 ) {
     val trendingState by viewModel.trendingState.collectAsState()
     val wishlistedIds by viewModel.wishlistedIds.collectAsState()
+    val priceAlertIds by viewModel.priceAlertIds.collectAsState()
+    val wishlistActionState by viewModel.wishlistActionState.collectAsState()
+    val priceAlertState by viewModel.priceAlertState.collectAsState()
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    var alertDeal by remember { mutableStateOf<TrendingDealResponse?>(null) }
+
+    LaunchedEffect(wishlistActionState) {
+        when (val state = wishlistActionState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
+                    duration = SnackbarDuration.Short,
+                )
+                viewModel.resetWishlistActionState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetWishlistActionState()
+            }
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(priceAlertState) {
+        when (val state = priceAlertState) {
+                is UiState.Success -> {
+                    alertDeal = null
+                    snackbarHostState.showSnackbar(strings.priceAlertSaved, duration = SnackbarDuration.Short)
+                    viewModel.resetPriceAlertState()
+                }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                viewModel.resetPriceAlertState()
+            }
+            else -> Unit
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
+        Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -95,8 +147,8 @@ fun TrendingScreen(
                         ) {
                             items(state.data) { deal ->
                                 val discountLabel = deal.discountLabel()
-                                val currentPriceLabel = "%,.0f đ".format(deal.currentPrice)
-                                val originalPriceLabel = deal.originalPrice?.let { "%,.0f đ".format(it) }
+                                val currentPriceLabel = formatPriceFromVnd(deal.currentPrice, languageMode)
+                                val originalPriceLabel = deal.originalPrice?.let { formatPriceFromVnd(it, languageMode) }
                                 
                                 ProductGridCard(
                                     title = deal.productName,
@@ -105,18 +157,39 @@ fun TrendingScreen(
                                     brand = null,
                                     originalPrice = originalPriceLabel,
                                     discount = discountLabel,
-                                    isWishlisted = deal.detailProductId in wishlistedIds,
+                                    isWishlisted = deal.detailPlatformProductId in wishlistedIds,
+                                    hasPriceAlert = deal.detailPlatformProductId in priceAlertIds,
                                     onProductClick = {
                                         val encodedUrl = deal.mainImageUrl?.let { Uri.encode(it) } ?: ""
                                         val encodedName = Uri.encode(deal.productName)
-                                        navController.navigate("${Route.PRODUCT_DETAIL}/${deal.detailProductId}?imageUrl=$encodedUrl&productName=$encodedName")
+                                        navController.navigate("${Route.PRODUCT_DETAIL}/${deal.detailProductId}?imageUrl=$encodedUrl&productName=$encodedName&platformProductId=${deal.detailPlatformProductId}")
                                     },
-                                    onWishlistClick = { viewModel.toggleWishlist(deal.detailProductId) },
+                                    onWishlistClick = { viewModel.toggleWishlist(deal) },
+                                    onPriceAlertClick = { alertDeal = deal },
                                 )
                             }
                         }
                     }
                 }
+            }
+        }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            )
+
+            alertDeal?.let { deal ->
+                PriceAlertTargetDialog(
+                    productName = deal.productName,
+                    currentPrice = deal.currentPrice,
+                    isLoading = priceAlertState is UiState.Loading,
+                    onDismiss = {
+                        if (priceAlertState !is UiState.Loading) alertDeal = null
+                    },
+                    onConfirm = { targetPrice ->
+                        viewModel.createPriceAlert(deal, targetPrice)
+                    },
+                )
             }
         }
     }

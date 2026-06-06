@@ -7,32 +7,32 @@ import org.junit.Test
 
 class PriceAlertStatusMapperTest {
     @Test
-    fun targetReachedWhenCurrentPriceIsBelowTarget() {
+    fun waitingWhenCurrentPriceIsBelowTargetWithoutBackendReachedState() {
         val alert = alert(currentPrice = 90.0, targetPrice = 100.0)
+
+        assertFalse(PriceAlertStatusMapper.isTargetReached(alert))
+        assertEquals("Waiting for price drop", PriceAlertStatusMapper.statusText(alert))
+    }
+
+    @Test
+    fun targetReachedWhenBackendReportsExplicitReachedFlag() {
+        val alert = alert(isTargetReached = true, currentPrice = 120.0)
 
         assertTrue(PriceAlertStatusMapper.isTargetReached(alert))
         assertEquals("Target reached!", PriceAlertStatusMapper.statusText(alert))
     }
 
     @Test
-    fun targetReachedWhenBackendPersistsExplicitReachedFlagWithoutCurrentPrice() {
-        val alert = alert(isTargetReached = true, currentPrice = null)
-
-        assertTrue(PriceAlertStatusMapper.isTargetReached(alert))
-    }
-
-    @Test
-    fun waitingWhenPriceIsAboveTargetEvenIfBackendHasTriggerMarkers() {
+    fun targetReachedWhenBackendReportsTriggeredMarker() {
         val alert = alert(
             currentPrice = 120.0,
             targetPrice = 100.0,
-            isTargetReached = true,
             isTriggered = true,
             lastNotifiedAt = "2026-05-29T09:00:00Z",
         )
 
-        assertFalse(PriceAlertStatusMapper.isTargetReached(alert))
-        assertEquals("Waiting for price drop", PriceAlertStatusMapper.statusText(alert))
+        assertTrue(PriceAlertStatusMapper.isTargetReached(alert))
+        assertEquals("Target reached!", PriceAlertStatusMapper.statusText(alert))
     }
 
     @Test
@@ -51,10 +51,17 @@ class PriceAlertStatusMapperTest {
     }
 
     @Test
-    fun usesFallbackLatestPriceForDisplayAndStatus() {
+    fun usesFallbackLatestPriceForDisplayOnly() {
         val alert = alert(currentPrice = null, latestPrice = 95.0, targetPrice = 100.0)
 
         assertEquals(95.0, PriceAlertStatusMapper.displayCurrentPrice(alert))
+        assertFalse(PriceAlertStatusMapper.isTargetReached(alert))
+    }
+
+    @Test
+    fun targetReachedWhenBackendReportsStatusOne() {
+        val alert = alert(currentPrice = 120.0, targetPrice = 100.0, status = "1")
+
         assertTrue(PriceAlertStatusMapper.isTargetReached(alert))
     }
 
@@ -66,14 +73,17 @@ class PriceAlertStatusMapperTest {
         isTargetReached: Boolean? = null,
         isTriggered: Boolean? = null,
         lastNotifiedAt: String? = null,
+        status: String? = null,
     ) = PriceAlertResponse(
         id = "alert-1",
         productId = "product-1",
+        platformProductId = "platform-product-1",
         userId = "user-1",
         targetPrice = targetPrice,
         currentPrice = currentPrice,
         latestPrice = latestPrice,
         isActive = isActive,
+        status = status,
         isTargetReached = isTargetReached,
         isTriggered = isTriggered,
         lastNotifiedAt = lastNotifiedAt,

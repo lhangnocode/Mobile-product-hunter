@@ -4,6 +4,7 @@ plugins {
 
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -15,7 +16,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "android.app.producthunt"
+        applicationId = "com.mobileproducthunter.app"
+        testApplicationId = "com.mobileproducthunter.app.test"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
@@ -89,4 +91,7 @@ dependencies {
     implementation(libs.coil.compose)
 
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation(platform("com.google.firebase:firebase-bom:34.14.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-messaging")
 }

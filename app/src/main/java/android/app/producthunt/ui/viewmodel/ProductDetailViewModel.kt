@@ -33,35 +33,41 @@ class ProductDetailViewModel @Inject constructor(
     private val _priceAlertState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
     val priceAlertState: StateFlow<UiState<PriceAlertResponse>> = _priceAlertState.asStateFlow()
 
+    private val _wishlistActionState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
+    val wishlistActionState: StateFlow<UiState<Boolean>> = _wishlistActionState.asStateFlow()
+
     private val currentProductId = MutableStateFlow<String?>(null)
+    private val currentPlatformProductId = MutableStateFlow<String?>(null)
 
     // Quan sát danh sách yêu thích từ Repository để đồng bộ mọi nơi
     val isWishlisted: StateFlow<Boolean> = combine(
-        currentProductId,
+        currentPlatformProductId,
         wishlistRepository.wishlist
     ) { id, state ->
         if (id == null) return@combine false
         if (state is UiState.Success) {
-            state.data.any { it.productId == id }
+            state.data.any { it.platformProductId == id }
         } else {
             false
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val hasPriceAlert: StateFlow<Boolean> = combine(
-        currentProductId,
+        currentPlatformProductId,
         priceAlertRepository.alerts
     ) { id, state ->
         if (id == null) return@combine false
         if (state is UiState.Success) {
-            state.data.any { it.productId == id }
+            state.data.any { it.platformProductId == id }
         } else {
             false
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    fun loadProductDetails(productId: String) {
+    fun loadProductDetails(productId: String, initialPlatformProductId: String? = null) {
         currentProductId.value = productId
+        currentPlatformProductId.value = null
+        _selectedListing.value = null
         viewModelScope.launch {
             _listingsState.value = UiState.Loading
             
@@ -78,8 +84,11 @@ class ProductDetailViewModel @Inject constructor(
             _listingsState.value = listingsResult
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
-                val firstListing = listingsResult.data.bestPricedListing()
+                val firstListing = listingsResult.data
+                    .firstOrNull { it.id == initialPlatformProductId }
+                    ?: listingsResult.data.bestPricedListing()
                 _selectedListing.value = firstListing
+                currentPlatformProductId.value = firstListing.id
                 
                 val currentPrice = firstListing.currentPrice.toDoubleOrNull() ?: 0.0
                 val originalPrice = firstListing.originalPrice?.toDoubleOrNull() ?: currentPrice
@@ -99,6 +108,7 @@ class ProductDetailViewModel @Inject constructor(
 
     fun selectListing(listing: PlatformListingDto) {
         _selectedListing.value = listing
+        currentPlatformProductId.value = listing.id
         val currentPrice = listing.currentPrice.toDoubleOrNull() ?: 0.0
         val originalPrice = listing.originalPrice?.toDoubleOrNull() ?: currentPrice
         loadPriceHistory(listing.id)
@@ -112,26 +122,41 @@ class ProductDetailViewModel @Inject constructor(
         }
     }
 
-    fun toggleWishlist(productId: String) {
+    fun toggleWishlist(listing: PlatformListingDto) {
         viewModelScope.launch {
-            if (isWishlisted.value) {
-                wishlistRepository.remove(productId)
+            val removing = isWishlisted.value
+            _wishlistActionState.value = UiState.Loading
+            val result = if (removing) {
+                wishlistRepository.remove(listing.id)
             } else {
-                wishlistRepository.add(productId)
+                wishlistRepository.add(platformProductId = listing.id, productId = listing.productId)
+            }
+            _wishlistActionState.value = when (result) {
+                is UiState.Success -> UiState.Success(!removing)
+                is UiState.Error -> UiState.Error(result.message)
+                else -> UiState.Idle
             }
             // Repository.add/remove đã tự động refresh flow, Detail sẽ cập nhật theo
         }
     }
 
-    fun createPriceAlert(productId: String, targetPrice: Double) {
+    fun createPriceAlert(listing: PlatformListingDto, targetPrice: Double) {
         viewModelScope.launch {
             _priceAlertState.value = UiState.Loading
-            _priceAlertState.value = priceAlertRepository.create(productId, targetPrice)
+            _priceAlertState.value = priceAlertRepository.create(
+                platformProductId = listing.id,
+                productId = listing.productId,
+                targetPrice = targetPrice,
+            )
         }
     }
 
     fun resetPriceAlertState() {
         _priceAlertState.value = UiState.Idle
+    }
+
+    fun resetWishlistActionState() {
+        _wishlistActionState.value = UiState.Idle
     }
 }
 

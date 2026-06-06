@@ -2,11 +2,16 @@ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.WishlistResponse
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
 import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PH_Primary
+import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,21 +30,30 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -56,25 +71,43 @@ fun WishlistScreen(
     modifier: Modifier = Modifier,
     wishlistViewModel: WishlistViewModel = hiltViewModel(),
 ) {
+    val strings = LocalAppStrings.current
     val wishlistState by wishlistViewModel.wishlistState.collectAsState()
+    val removeState by wishlistViewModel.removeState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header for Wishlist
-            Text(
-                text = "Saved Products",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            if (wishlistState is UiState.Success && (wishlistState as UiState.Success).data.isNotEmpty()) {
-                TextButton(onClick = { wishlistViewModel.removeAll() }) {
-                    Text("Xóa tất cả", color = MaterialTheme.colorScheme.error)
-                }
+    LaunchedEffect(removeState) {
+        when (val state = removeState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data > 1) strings.wishlistRemovedMany(state.data) else strings.wishlistRemoved,
+                    duration = SnackbarDuration.Short,
+                )
+                wishlistViewModel.resetRemoveState()
             }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message, duration = SnackbarDuration.Long)
+                wishlistViewModel.resetRemoveState()
+            }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
+            WishlistHeaderActions(
+                isClearing = removeState is UiState.Loading,
+                hasItems = wishlistCount > 0,
+                onClearAll = { wishlistViewModel.removeAll() },
+            )
+            WishlistCounterPanel(
+                count = wishlistCount,
+            )
             
             SavedProductsContent(wishlistState, navController, wishlistViewModel)
         }
@@ -82,11 +115,125 @@ fun WishlistScreen(
 }
 
 @Composable
+private fun WishlistHeaderActions(
+    isClearing: Boolean,
+    hasItems: Boolean,
+    onClearAll: () -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Button(
+            onClick = onClearAll,
+            enabled = hasItems && !isClearing,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            if (isClearing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onError,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = strings.clearAll.replace("\n", " "),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onError,
+                lineHeight = 16.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WishlistCounterPanel(
+    count: Int,
+) {
+    val strings = LocalAppStrings.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PHSpacing.ScreenHorizontal)
+            .heightIn(min = CounterPanelMinHeight),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = strings.wishlist,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = count.toString(),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+private val CounterPanelMinHeight = 82.dp
+
+@Composable
 private fun SavedProductsContent(
     state: UiState<List<WishlistResponse>>,
     navController: NavController,
     viewModel: WishlistViewModel
 ) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     when (state) {
         is UiState.Loading, UiState.Idle -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -110,12 +257,16 @@ private fun SavedProductsContent(
                 ) {
                     items(state.data) { item ->
                         val p = item.product
-                        val name = p?.productName ?: item.productName ?: "Product"
+                        val name = p?.productName
+                            ?: item.productName
+                            ?: item.rawName
+                            ?: item.normalizedName
+                            ?: strings.trackedProduct
                         val image = p?.mainImageUrl ?: item.mainImageUrl
                         
                         WishlistProductCard(
                             title = name,
-                            currentPrice = item.currentPrice?.let { "%,.0f đ".format(it) } ?: "Tracking",
+                            currentPrice = item.currentPrice?.let { formatPriceFromVnd(it, languageMode) } ?: strings.checking,
                             imageUrl = image,
                             onProductClick = {
                                 val encodedImage = image?.let {
@@ -124,10 +275,15 @@ private fun SavedProductsContent(
                                 val route = buildString {
                                     append("${Route.PRODUCT_DETAIL}/${item.productId}")
                                     if (!encodedImage.isNullOrBlank()) append("?imageUrl=$encodedImage")
+                                    append(if (encodedImage.isNullOrBlank()) "?" else "&")
+                                    append("platformProductId=${item.platformProductId}")
+                                    append("&")
+                                    append("productName=")
+                                    append(URLEncoder.encode(name, StandardCharsets.UTF_8.toString()))
                                 }
                                 navController.navigate(route)
                             },
-                            onRemoveClick = { viewModel.remove(item.productId) }
+                            onRemoveClick = { viewModel.remove(item.platformProductId) }
                         )
                     }
                 }
@@ -177,8 +333,6 @@ fun WishlistProductCard(
                 Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(Modifier.height(4.dp))
                 Text(text = currentPrice, color = PH_Primary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                Spacer(Modifier.height(4.dp))
-                Text(text = "↓ 300k from yesterday", color = Color(0xFF4CAF50), fontSize = 12.sp)
             }
 
             IconButton(onClick = onRemoveClick) {
@@ -190,6 +344,7 @@ fun WishlistProductCard(
 
 @Composable
 private fun EmptyWishlistState() {
+    val strings = LocalAppStrings.current
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
@@ -199,7 +354,7 @@ private fun EmptyWishlistState() {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Your wishlist is empty", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+            Text(text = strings.emptyWishlist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
         }
     }
 }

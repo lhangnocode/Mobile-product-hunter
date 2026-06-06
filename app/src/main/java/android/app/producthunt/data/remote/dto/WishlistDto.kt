@@ -3,15 +3,17 @@ package android.app.producthunt.data.remote.dto
 import com.google.gson.annotations.SerializedName
 
 data class WishListCreate(
-    @SerializedName("product_id") val productId: String,
+    @SerializedName("platform_product_id") val platformProductId: String,
+    @SerializedName("product_id") val productId: String? = null,
 )
 
 data class WishlistResponse(
-    @SerializedName("id") val id: String,
+    @SerializedName("id") val id: String? = null,
     @SerializedName("product_id") val productId: String,
-    @SerializedName("user_id") val userId: String,
-    @SerializedName("created_at") val createdAt: String?,
-    @SerializedName("product") val product: ProductResponse?,
+    @SerializedName("platform_product_id") val platformProductId: String,
+    @SerializedName("user_id") val userId: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("product") val product: ProductResponse? = null,
     
     // Các trường fallback nếu API trả về cấu trúc phẳng (không lồng trong product)
     @SerializedName("product_name") val productName: String? = null,

@@ -5,6 +5,16 @@ import android.app.producthunt.data.remote.dto.PlatformListingDto
 import android.app.producthunt.data.remote.dto.PriceAnalysisResponse
 import android.app.producthunt.data.remote.dto.PriceRecordResponse
 import android.app.producthunt.core.state.UiState
+import android.app.producthunt.data.local.LanguageMode
+import android.app.producthunt.ui.i18n.LocalAppStrings
+import android.app.producthunt.ui.i18n.LocalLanguageMode
+import android.app.producthunt.ui.i18n.compactPriceFromDisplayValue
+import android.app.producthunt.ui.i18n.currencySuffix
+import android.app.producthunt.ui.i18n.displayPriceValueFromVnd
+import android.app.producthunt.ui.i18n.formatDigitGroups
+import android.app.producthunt.ui.i18n.formatPriceFromVnd
+import android.app.producthunt.ui.i18n.targetInputToVnd
+import android.app.producthunt.ui.i18n.targetInputValueFromVnd
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.ProductDetailViewModel
 import androidx.compose.foundation.*
@@ -49,29 +59,32 @@ import java.util.Locale
 fun ProductDetailScreen(
     navController: NavController,
     productId: String?,
+    initialPlatformProductId: String? = null,
     imageUrl: String? = null,
     viewModel: ProductDetailViewModel = hiltViewModel(),
     productName: String?
 ) {
+    val strings = LocalAppStrings.current
     val listingsState by viewModel.listingsState.collectAsState()
     val historyState by viewModel.historyState.collectAsState()
     val analysisState by viewModel.analysisState.collectAsState()
     val isWishlisted by viewModel.isWishlisted.collectAsState()
     val hasPriceAlert by viewModel.hasPriceAlert.collectAsState()
     val priceAlertState by viewModel.priceAlertState.collectAsState()
+    val wishlistActionState by viewModel.wishlistActionState.collectAsState()
     val selectedListing by viewModel.selectedListing.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPriceAlertDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(productId) {
-        productId?.let { viewModel.loadProductDetails(it) }
+    LaunchedEffect(productId, initialPlatformProductId) {
+        productId?.let { viewModel.loadProductDetails(it, initialPlatformProductId) }
     }
 
     LaunchedEffect(priceAlertState) {
         when (val state = priceAlertState) {
             is UiState.Success -> {
                 showPriceAlertDialog = false
-                snackbarHostState.showSnackbar("Đã đặt cảnh báo giá")
+                snackbarHostState.showSnackbar(strings.priceAlertSaved)
                 viewModel.resetPriceAlertState()
             }
             is UiState.Error -> {
@@ -82,12 +95,30 @@ fun ProductDetailScreen(
         }
     }
 
+    LaunchedEffect(wishlistActionState) {
+        when (val state = wishlistActionState) {
+            is UiState.Success -> {
+                snackbarHostState.showSnackbar(
+                    if (state.data) strings.wishlistAdded else strings.wishlistRemoved,
+                )
+                viewModel.resetWishlistActionState()
+            }
+            is UiState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetWishlistActionState()
+            }
+            else -> Unit
+        }
+    }
+
     val scrollState = rememberScrollState()
     val currentListings = (listingsState as? UiState.Success)?.data.orEmpty()
-    val currentProductTitle = productName ?: "sản phẩm này"
-    val currentProductPrice = currentListings
-        .mapNotNull { it.currentPrice.toDoubleOrNull() }
-        .minOrNull()
+    val currentProductTitle = selectedListing?.rawName
+        ?: productName
+        ?: currentListings.firstOrNull()?.rawName
+        ?: strings.trackedProduct
+    val currentProductPrice = selectedListing?.currentPrice?.toDoubleOrNull()
+        ?: currentListings.mapNotNull { it.currentPrice.toDoubleOrNull() }.minOrNull()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -105,14 +136,14 @@ fun ProductDetailScreen(
                 if (listings.isEmpty()) {
                     EmptyState(navController)
                 } else {
-                    val bestListing = listings.bestPricedListing()
+                    val headerListing = selectedListing ?: listings.bestPricedListing()
                     
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
                     ) {
-                        ProductHeaderCinematic(bestListing, imageUrl)
+                        ProductHeaderCinematic(headerListing, imageUrl)
 
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                             Text(
@@ -133,7 +164,15 @@ fun ProductDetailScreen(
 
                             // Price Analysis Section
                             if (analysisState is UiState.Success) {
-                                PriceAnalysisCards((analysisState as UiState.Success).data)
+                                val averagePrice = (historyState as? UiState.Success)
+                                    ?.data
+                                    ?.mapNotNull { it.price.toDoubleOrNull() }
+                                    ?.takeIf { it.isNotEmpty() }
+                                    ?.average()
+                                PriceAnalysisCards(
+                                    analysis = (analysisState as UiState.Success).data,
+                                    averagePrice = averagePrice,
+                                )
                             } else if (analysisState is UiState.Loading) {
                                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp), color = PH_Primary)
                             }
@@ -141,7 +180,7 @@ fun ProductDetailScreen(
                             Spacer(modifier = Modifier.height(32.dp))
 
                             Text(
-                                "Giá tại các sàn TMĐT",
+                                strings.marketplacePrices,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -161,7 +200,7 @@ fun ProductDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Lịch sử biến động giá",
+                                    strings.priceHistory,
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = PH_Primary
@@ -189,7 +228,7 @@ fun ProductDetailScreen(
                                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Đang tổng hợp dữ liệu giá...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(strings.preparingPriceData, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
@@ -207,12 +246,12 @@ fun ProductDetailScreen(
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 32.dp, end = 16.dp)
             ) {
-                productId?.let { id ->
+                selectedListing?.let { listing ->
                     ProductFloatingActions(
-                        productId = id,
+                        productId = listing.id,
                         isWishlisted = isWishlisted,
                         hasPriceAlert = hasPriceAlert,
-                        onWishlistClick = { viewModel.toggleWishlist(id) },
+                        onWishlistClick = { viewModel.toggleWishlist(listing) },
                         onAlertClick = { showPriceAlertDialog = true }
                     )
                 }
@@ -223,7 +262,8 @@ fun ProductDetailScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
             )
 
-            if (showPriceAlertDialog && productId != null) {
+            val alertListing = selectedListing
+            if (showPriceAlertDialog && alertListing != null) {
                 PriceAlertTargetDialog(
                     productName = currentProductTitle,
                     currentPrice = currentProductPrice,
@@ -234,7 +274,7 @@ fun ProductDetailScreen(
                         }
                     },
                     onConfirm = { targetPrice ->
-                        viewModel.createPriceAlert(productId, targetPrice)
+                        viewModel.createPriceAlert(alertListing, targetPrice)
                     },
                 )
             }
@@ -243,17 +283,19 @@ fun ProductDetailScreen(
 }
 
 @Composable
-private fun PriceAlertTargetDialog(
+fun PriceAlertTargetDialog(
     productName: String,
     currentPrice: Double?,
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit,
 ) {
-    var targetPriceInput by remember(currentPrice) {
-        mutableStateOf(currentPrice?.let { "%.0f".format(it) } ?: "")
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
+    var targetPriceInput by remember(currentPrice, languageMode) {
+        mutableStateOf(targetInputValueFromVnd(currentPrice, languageMode))
     }
-    val targetPrice = targetPriceInput.replace(",", "").trim().toDoubleOrNull()
+    val targetPrice = targetInputToVnd(targetPriceInput, languageMode)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -288,7 +330,7 @@ private fun PriceAlertTargetDialog(
                     }
                     Spacer(Modifier.width(16.dp))
                     Text(
-                        text = "CẢNH BÁO GIÁ",
+                        text = strings.priceAlertTitle,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -300,14 +342,14 @@ private fun PriceAlertTargetDialog(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = strings.close,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
                 Text(
-                    text = "Theo dõi ${productName}. Chúng tôi sẽ gửi email ngay khi giá giảm xuống mức này.",
+                    text = strings.priceAlertDescription(productName),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 24.sp,
@@ -316,14 +358,12 @@ private fun PriceAlertTargetDialog(
                 OutlinedTextField(
                     value = targetPriceInput,
                     onValueChange = { raw ->
-                        if (raw.all { it.isDigit() || it == ',' || it == '.' }) {
-                            targetPriceInput = raw
-                        }
+                        targetPriceInput = formatDigitGroups(raw)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("VD: 7690000") },
-                    suffix = { Text("đ", fontWeight = FontWeight.Bold) },
+                    placeholder = { Text(if (languageMode == LanguageMode.ENGLISH) "Ex: 308" else "VD: 7.690.000") },
+                    suffix = { Text(currencySuffix(languageMode), fontWeight = FontWeight.Bold) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     shape = RoundedCornerShape(16.dp),
@@ -344,7 +384,7 @@ private fun PriceAlertTargetDialog(
                         )
                     } else {
                         Text(
-                            text = "XÁC NHẬN ĐẶT THÔNG BÁO",
+                            text = strings.confirmPriceAlert,
                             fontWeight = FontWeight.Black,
                             color = MaterialTheme.colorScheme.onPrimary,
                         )
@@ -360,10 +400,11 @@ private fun ProductMetaChips(
     inStock: Boolean,
     platformCount: Int,
 ) {
+    val strings = LocalAppStrings.current
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         AssistChip(
             onClick = {},
-            label = { Text(if (inStock) "Còn hàng" else "Hết hàng") },
+            label = { Text(if (inStock) strings.inStock else strings.outOfStock) },
             leadingIcon = {
                 Icon(
                     imageVector = if (inStock) Icons.Default.Inventory2 else Icons.Default.RemoveShoppingCart,
@@ -380,7 +421,7 @@ private fun ProductMetaChips(
         )
         AssistChip(
             onClick = {},
-            label = { Text("$platformCount sàn") },
+            label = { Text(strings.platforms(platformCount)) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Storefront,
@@ -394,6 +435,8 @@ private fun ProductMetaChips(
 
 @Composable
 fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     val price = listing.currentPrice.toDoubleOrNull() ?: 0.0
     Box(
         modifier = Modifier
@@ -443,7 +486,7 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
                 shape = RoundedCornerShape(6.dp),
             ) {
                 Text(
-                    text = "GIÁ TỐT NHẤT",
+                    text = strings.bestPrice,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
@@ -452,7 +495,7 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "%,.0f đ".format(price),
+                text = formatPriceFromVnd(price, languageMode),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -463,18 +506,20 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
 }
 
 @Composable
-fun PriceAnalysisCards(analysis: PriceAnalysisResponse) {
+fun PriceAnalysisCards(analysis: PriceAnalysisResponse, averagePrice: Double?) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         AnalysisCard(
-            label = "Thấp nhất",
-            value = "%,.0f đ".format(analysis.allTimeLow ?: analysis.currentPrice),
+            label = strings.lowest,
+            value = formatPriceFromVnd(analysis.allTimeLow ?: analysis.currentPrice, languageMode),
             icon = Icons.AutoMirrored.Filled.TrendingDown,
             color = Color(0xFF00C853),
             modifier = Modifier.weight(1f)
         )
         AnalysisCard(
-            label = "Giá trung bình",
-            value = "%,.0f đ".format(analysis.averagePrice ?: analysis.currentPrice),
+            label = strings.averagePrice,
+            value = formatPriceFromVnd(averagePrice ?: analysis.currentPrice, languageMode),
             icon = Icons.Default.Timeline,
             color = Color(0xFF2962FF),
             modifier = Modifier.weight(1f)
@@ -502,6 +547,8 @@ fun AnalysisCard(label: String, value: String, icon: androidx.compose.ui.graphic
 
 @Composable
 fun ModernPriceChart(history: List<PriceRecordResponse>) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     val points = history
         .mapIndexedNotNull { index, record ->
             record.price.toFloatOrNull()?.let { price ->
@@ -521,7 +568,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             }
         }
 
-    if (points.size < 2) {
+    if (points.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -530,12 +577,12 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text("Chưa đủ dữ liệu vẽ biểu đồ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(strings.notEnoughChartData, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
 
-    val prices = points.map { it.price }
+    val prices = points.map { displayPriceValueFromVnd(it.price.toDouble(), languageMode).toFloat() }
     val rawMaxPrice = prices.maxOrNull() ?: 1f
     val rawMinPrice = prices.minOrNull() ?: 0f
     val rawRange = rawMaxPrice - rawMinPrice
@@ -565,11 +612,13 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 58.dp, end = 18.dp, top = 28.dp, bottom = 42.dp)
+                .padding(start = 82.dp, end = 18.dp, top = 28.dp, bottom = 42.dp)
         ) {
             val width = size.width
             val height = size.height
             val spacing = width / (prices.size - 1).coerceAtLeast(1)
+            fun xForIndex(index: Int): Float =
+                if (prices.size == 1) width / 2f else index * spacing
 
             yAxisLabels.forEach { label ->
                 val y = height - ((label - chartMinPrice) / chartRange * height)
@@ -584,10 +633,10 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
 
             val linePath = Path()
             prices.forEachIndexed { i, price ->
-                val x = i * spacing
+                val x = xForIndex(i)
                 val y = height - ((price - chartMinPrice) / chartRange * height)
                 if (i == 0) linePath.moveTo(x, y) else {
-                    val prevX = (i - 1) * spacing
+                    val prevX = xForIndex(i - 1)
                     val prevY = height - ((prices[i-1] - chartMinPrice) / chartRange * height)
                     linePath.cubicTo(
                         (prevX + x) / 2f, prevY,
@@ -604,22 +653,24 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
                 close()
             }
 
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    listOf(PH_Primary.copy(alpha = 0.24f), Color.Transparent),
-                    startY = 0f,
-                    endY = height,
-                ),
-            )
+            if (prices.size > 1) {
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        listOf(PH_Primary.copy(alpha = 0.24f), Color.Transparent),
+                        startY = 0f,
+                        endY = height,
+                    ),
+                )
 
-            drawPath(
-                path = linePath,
-                color = PH_Primary,
-                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
+                drawPath(
+                    path = linePath,
+                    color = PH_Primary,
+                    style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+            }
 
-            val lastX = (prices.size - 1) * spacing
+            val lastX = xForIndex(prices.lastIndex)
             val lastY = height - ((prices.last() - chartMinPrice) / chartRange * height)
             drawCircle(color = PH_Primary.copy(alpha = 0.2f), radius = 15.dp.toPx(), center = Offset(lastX, lastY))
             drawCircle(color = PH_Primary, radius = 6.dp.toPx(), center = Offset(lastX, lastY))
@@ -630,14 +681,14 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 12.dp, top = 22.dp, bottom = 48.dp)
-                .width(44.dp)
+                .width(66.dp)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.End,
         ) {
             yAxisLabels.forEach { label ->
                 Text(
-                    text = formatCompactPrice(label),
+                    text = compactPriceFromDisplayValue(label, languageMode),
                     fontSize = 11.sp,
                     color = axisTextColor,
                     fontWeight = FontWeight.Bold,
@@ -650,7 +701,7 @@ fun ModernPriceChart(history: List<PriceRecordResponse>) {
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(start = 58.dp, end = 18.dp, bottom = 12.dp),
+                .padding(start = 82.dp, end = 18.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             xAxisIndexes.forEach { index ->
@@ -678,13 +729,6 @@ private fun chartAxisIndexes(size: Int): List<Int> {
     return listOf(0, size / 3, (size * 2) / 3, size - 1).distinct()
 }
 
-private fun formatCompactPrice(price: Float): String =
-    when {
-        price >= 1_000_000f -> String.format(Locale.US, "%.1fM", price / 1_000_000f)
-        price >= 1_000f -> String.format(Locale.US, "%.0fK", price / 1_000f)
-        else -> String.format(Locale.US, "%.0f", price)
-    }
-
 private fun formatDateAxisLabel(rawDate: String): String {
     val formatter = DateTimeFormatter.ofPattern("dd/MM")
     return runCatching { OffsetDateTime.parse(rawDate).format(formatter) }
@@ -707,6 +751,8 @@ fun MarketComparisonSection(
     selectedListingId: String?,
     onSelectListing: (PlatformListingDto) -> Unit
 ) {
+    val strings = LocalAppStrings.current
+    val languageMode = LocalLanguageMode.current
     val context = LocalContext.current
     val sortedListings = listings.sortedBy { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -732,16 +778,16 @@ fun MarketComparisonSection(
                         Text(platformName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             text = when {
-                                index == 0 && listing.inStock -> "Giá tốt nhất • Còn hàng"
-                                listing.inStock -> "Còn hàng"
-                                else -> "Hết hàng"
+                                index == 0 && listing.inStock -> strings.bestPriceInStock
+                                listing.inStock -> strings.inStock
+                                else -> strings.outOfStock
                             },
                             fontSize = 12.sp,
                             color = if (listing.inStock) PH_Status_Success_Text else MaterialTheme.colorScheme.error,
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("%,.0f đ".format(price), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PH_Primary)
+                        Text(formatPriceFromVnd(price, languageMode), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = PH_Primary)
                         Spacer(modifier = Modifier.height(6.dp))
                         Button(
                             onClick = {
@@ -751,7 +797,7 @@ fun MarketComparisonSection(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)
                         ) {
-                            Text("Đi đến shop", fontSize = 12.sp)
+                            Text(strings.goToShop, fontSize = 12.sp)
                         }
                     }
                 }
