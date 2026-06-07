@@ -9,6 +9,8 @@ import android.app.producthunt.MainActivity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -54,6 +56,7 @@ class PriceAlertNotificationNotifier @Inject constructor(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_SOUND)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
@@ -92,6 +95,7 @@ class PriceAlertNotificationNotifier @Inject constructor(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_SOUND)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
@@ -113,12 +117,19 @@ class PriceAlertNotificationNotifier @Inject constructor(
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Price alerts",
-            NotificationManager.IMPORTANCE_DEFAULT,
+            NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "Notifications for triggered price alerts"
+            setSound(soundUri, audioAttributes)
         }
 
         context.getSystemService(NotificationManager::class.java)
@@ -126,7 +137,7 @@ class PriceAlertNotificationNotifier @Inject constructor(
     }
 
     private companion object {
-        const val CHANNEL_ID = "price_alerts"
+        const val CHANNEL_ID = "price_alerts_v2"
         private const val NOTIFICATION_ID = 1001
     }
 }
