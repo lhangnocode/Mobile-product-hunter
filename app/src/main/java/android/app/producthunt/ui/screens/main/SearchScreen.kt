@@ -67,7 +67,7 @@ fun SearchScreen(
     var searchMode by remember(initialConversationId, initialQuery) {
         val shouldOpenAgentMode =
             initialConversationId == NEW_AGENT_CONVERSATION_ID ||
-                !initialConversationId.isNullOrBlank()
+                    !initialConversationId.isNullOrBlank()
 
         mutableStateOf(
             if (shouldOpenAgentMode) {
@@ -138,6 +138,7 @@ private fun ProductSearchPanel(
     val messages = remember { mutableStateListOf<ProductSearchMessage>() }
     val listState = rememberLazyListState()
     val searchState by viewModel.searchState.collectAsState()
+    var isPaginating by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialQuery) {
         if (!initialQuery.isNullOrBlank() && messages.isEmpty()) {
@@ -148,19 +149,36 @@ private fun ProductSearchPanel(
     LaunchedEffect(searchState) {
         if (searchState is UiState.Success) {
             val response = (searchState as UiState.Success).data
-            if (messages.isNotEmpty() && messages.last().isLoading) {
-                messages.removeAt(messages.lastIndex)
-            }
-            messages.add(
-                ProductSearchMessage(
-                    text = strings.searchResultsFound(response.totalResults),
-                    isUser = false,
-                    isProductList = true,
-                    productList = response.data,
-                    showAgentHeader = false,
+            if (isPaginating) {
+                isPaginating = false
+                val lastIdx = messages.indexOfLast { it.isProductList }
+                if (lastIdx >= 0) {
+                    val old = messages[lastIdx]
+                    messages[lastIdx] = old.copy(
+                        productList = old.productList + response.data,
+                        currentPage = response.currentPage,
+                        totalPages = response.totalPages,
+                    )
+                }
+            } else {
+                if (messages.isNotEmpty() && messages.last().isLoading) {
+                    messages.removeAt(messages.lastIndex)
+                }
+                messages.add(
+                    ProductSearchMessage(
+                        text = strings.searchResultsFound(response.totalResults),
+                        isUser = false,
+                        isProductList = true,
+                        productList = response.data,
+                        showAgentHeader = false,
+                        currentPage = response.currentPage,
+                        totalPages = response.totalPages,
+                        keyword = response.keyword,
+                    )
                 )
-            )
+            }
         } else if (searchState is UiState.Error) {
+            isPaginating = false
             if (messages.isNotEmpty() && messages.last().isLoading) {
                 messages.removeAt(messages.lastIndex)
             }
@@ -186,7 +204,6 @@ private fun ProductSearchPanel(
                 ProductSearchLanding(
                     currentUser = currentUser,
                     onSuggestionClick = { suggestion ->
-                        query = suggestion
                         performNormalSearch(suggestion, messages, viewModel)
                     },
                 )
@@ -194,6 +211,7 @@ private fun ProductSearchPanel(
                 ConversationArea(
                     messages = messages,
                     listState = listState,
+                    isPaginating = isPaginating,
                     onProductClick = { product ->
                         product.id?.let { id ->
                             val encodedImage = product.mainImageUrl?.let {
@@ -205,6 +223,10 @@ private fun ProductSearchPanel(
                             }
                             navController.navigate(route)
                         }
+                    },
+                    onLoadMore = { msg ->
+                        isPaginating = true
+                        viewModel.search(msg.keyword, msg.currentPage + 1)
                     },
                 )
             }
@@ -364,7 +386,10 @@ data class ProductSearchMessage(
     val productList: List<ProductResponse> = emptyList(),
     val compareItems: List<android.app.producthunt.data.remote.dto.SearchCompareItem> = emptyList(),
     val trendingItems: List<android.app.producthunt.data.remote.dto.TrendingDealResponse> = emptyList(),
-    val showAgentHeader: Boolean = true
+    val showAgentHeader: Boolean = true,
+    val currentPage: Int = 1,
+    val totalPages: Int = 1,
+    val keyword: String = "",
 )
 
 @Composable
@@ -409,9 +434,9 @@ fun ProductSearchLanding(
             textAlign = TextAlign.Center,
             lineHeight = 24.sp
         )
-        
+
         Spacer(Modifier.height(48.dp))
-        
+
         Text(
             text = when (LocalLanguageMode.current) {
                 LanguageMode.ENGLISH -> "POPULAR SEARCHES"
@@ -570,20 +595,29 @@ fun AiAssistantLanding(
 fun ConversationArea(
     messages: List<ProductSearchMessage>,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    isPaginating: Boolean,
     onProductClick: (ProductResponse) -> Unit,
+    onLoadMore: (ProductSearchMessage) -> Unit,
 ) {
+    val lastProductListIndex = messages.indexOfLast { it.isProductList }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        items(messages) { message ->
+        items(messages.size) { index ->
+            val message = messages[index]
             when {
                 message.compareItems.isNotEmpty() -> AgentCompareMessage(message)
                 message.trendingItems.isNotEmpty() -> TrendingDealsMessage(message)
                 message.isComparison -> AIComparisonMessage(message.text)
-                message.isProductList -> ProductListMessage(message, onProductClick)
+                message.isProductList -> ProductListMessage(
+                    message = message,
+                    onProductClick = onProductClick,
+                    isPaginating = isPaginating && index == lastProductListIndex,
+                    onLoadMore = onLoadMore,
+                )
                 message.isDetail -> InlineProductDetail(message)
                 else -> ChatBubble(message)
             }
@@ -708,7 +742,7 @@ private fun MarkdownResponseText(text: String) {
                     text = line.drop(2),
                 )
                 line.matches(Regex("""\d+\.\s+.*""")) -> {
-                    val marker = line.substringBefore(" ") 
+                    val marker = line.substringBefore(" ")
                     MarkdownListLine(
                         marker = marker,
                         text = line.substringAfter(" "),
@@ -938,7 +972,7 @@ fun ChatBubble(message: ProductSearchMessage) {
         if (!message.isUser && message.showAgentHeader) {
             AgentHeader()
         }
-        
+
         Surface(
             color = if (message.isUser) PH_Primary else MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(
@@ -1114,13 +1148,15 @@ fun TrendingDealsMessage(message: ProductSearchMessage) {
 }
 
 @Composable
-fun ProductListMessage(message: ProductSearchMessage, onProductClick: (ProductResponse) -> Unit) {
+fun ProductListMessage(
+    message: ProductSearchMessage,
+    onProductClick: (ProductResponse) -> Unit,
+    isPaginating: Boolean = false,
+    onLoadMore: (ProductSearchMessage) -> Unit = {},
+) {
     val strings = LocalAppStrings.current
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.showAgentHeader) AgentHeader()
-        Text(text = message.text, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
-        Spacer(Modifier.height(16.dp))
-        
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             message.productList.forEach { product ->
                 Card(
@@ -1142,8 +1178,8 @@ fun ProductListMessage(message: ProductSearchMessage, onProductClick: (ProductRe
                         ) {
                             if (product.mainImageUrl != null) {
                                 AsyncImage(
-                                    model = product.mainImageUrl, 
-                                    contentDescription = null, 
+                                    model = product.mainImageUrl,
+                                    contentDescription = null,
                                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
                                     contentScale = ContentScale.Crop
                                 )
@@ -1159,6 +1195,48 @@ fun ProductListMessage(message: ProductSearchMessage, onProductClick: (ProductRe
                         }
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
+                }
+            }
+
+            if (message.currentPage < message.totalPages) {
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = { if (!isPaginating) onLoadMore(message) },
+                    enabled = !isPaginating,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    ),
+                ) {
+                    if (isPaginating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = PH_Primary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    } else {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = strings.loadMore,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -1182,8 +1260,8 @@ fun InlineProductDetail(message: ProductSearchMessage) {
                 Box(modifier = Modifier.fillMaxWidth().height(180.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                     if (product?.mainImageUrl != null) {
                         AsyncImage(
-                            model = product.mainImageUrl, 
-                            contentDescription = null, 
+                            model = product.mainImageUrl,
+                            contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Fit
                         )
@@ -1192,18 +1270,18 @@ fun InlineProductDetail(message: ProductSearchMessage) {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                
+
                 Text(strings.priceHistory30Days, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)))
-                
+
                 Spacer(Modifier.height(16.dp))
                 Text(strings.productInfo(product?.brand ?: strings.officialProductInfo), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-                
+
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)) { 
-                         Text(strings.followPrice) 
+                    Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = PH_Primary)) {
+                        Text(strings.followPrice)
                     }
                     Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Text(strings.goToStore, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1257,7 +1335,7 @@ fun AIComparisonMessage(text: String) {
 fun ProductCompItem(brand: String, model: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(90.dp)) {
         Box(modifier = Modifier.size(70.dp).background(color.copy(alpha = 0.2f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-             Icon(Icons.Default.TabletAndroid, contentDescription = null, tint = color)
+            Icon(Icons.Default.TabletAndroid, contentDescription = null, tint = color)
         }
         Spacer(Modifier.height(8.dp))
         Text(brand, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1294,12 +1372,12 @@ fun ChatInputArea(
             TextField(
                 value = value,
                 onValueChange = onValueChange,
-                placeholder = { 
+                placeholder = {
                     Text(
                         if (mode == "AI Agent") strings.aiAgentPlaceholder else strings.normalSearchPlaceholder,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp
-                    ) 
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()

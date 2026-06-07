@@ -135,6 +135,7 @@ data class AppStrings(
     val noScheduledDrops: String,
     val noScheduledDropsDescription: String,
     val browsePriceHistoryTrends: String,
+    val loadMore: String,
 ) {
     companion object {
         val en = AppStrings(
@@ -245,6 +246,7 @@ data class AppStrings(
             noScheduledDrops = "No Scheduled Drops",
             noScheduledDropsDescription = "You do not have any seasonal or recurring alerts set up. Track historical sales to anticipate the next big dip.",
             browsePriceHistoryTrends = "Browse Price History Trends",
+            loadMore = "Load more results",
         )
 
         val vi = AppStrings(
@@ -355,6 +357,7 @@ data class AppStrings(
             noScheduledDrops = "Không có lịch giảm giá",
             noScheduledDropsDescription = "Bạn chưa thiết lập cảnh báo theo mùa hoặc định kỳ. Hãy theo dõi lịch sử giá để dự đoán lần giảm tiếp theo.",
             browsePriceHistoryTrends = "Xem xu hướng lịch sử giá",
+            loadMore = "Xem thêm kết quả",
         )
 
         fun forMode(mode: LanguageMode): AppStrings =
