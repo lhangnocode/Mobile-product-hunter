@@ -73,6 +73,7 @@ fun ProductDetailScreen(
     val priceAlertState by viewModel.priceAlertState.collectAsState()
     val wishlistActionState by viewModel.wishlistActionState.collectAsState()
     val selectedListing by viewModel.selectedListing.collectAsState()
+    val productMetadata by viewModel.productMetadata.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPriceAlertDialog by remember { mutableStateOf(false) }
 
@@ -113,8 +114,10 @@ fun ProductDetailScreen(
 
     val scrollState = rememberScrollState()
     val currentListings = (listingsState as? UiState.Success)?.data.orEmpty()
+    val effectiveImageUrl = imageUrl ?: productMetadata?.imageUrl
     val currentProductTitle = selectedListing?.rawName
         ?: productName
+        ?: productMetadata?.productName
         ?: currentListings.firstOrNull()?.rawName
         ?: strings.trackedProduct
     val currentProductPrice = selectedListing?.currentPrice?.toDoubleOrNull()
@@ -143,7 +146,7 @@ fun ProductDetailScreen(
                             .fillMaxSize()
                             .verticalScroll(scrollState)
                     ) {
-                        ProductHeaderCinematic(headerListing, imageUrl)
+                        ProductHeaderCinematic(headerListing, effectiveImageUrl)
 
                         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                             Text(
