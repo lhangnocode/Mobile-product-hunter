@@ -1,6 +1,7 @@
 package android.app.producthunt.di
 
 import android.app.producthunt.BuildConfig
+import android.app.producthunt.data.remote.api.AgentApiService
 import android.app.producthunt.data.remote.api.AuthApiService
 import android.app.producthunt.data.remote.api.DeviceTokenApiService
 import android.app.producthunt.data.remote.api.PlatformProductApiService
@@ -17,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -48,6 +50,22 @@ object NetworkModule {
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
+
+    @Provides
+    @Singleton
+    fun provideAgentRetrofit(okHttpClient: OkHttpClient): AgentApiService =
+        Retrofit.Builder()
+            .baseUrl(BuildConfig.BASE_URL)
+            .client(
+                okHttpClient.newBuilder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(120, TimeUnit.SECONDS)
+                    .writeTimeout(120, TimeUnit.SECONDS)
+                    .build(),
+            )
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(AgentApiService::class.java)
 
     @Provides @Singleton
     fun provideAuthApiService(retrofit: Retrofit): AuthApiService =
