@@ -70,7 +70,7 @@ fun ProductGridCard(
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         androidx.compose.foundation.Image(
-                            painter = painterResource(id = R.drawable.product_logo),
+                            painter = painterResource(id = R.mipmap.ic_launcher),
                             contentDescription = null,
                             modifier = Modifier.size(60.dp).alpha(0.3f),
                             contentScale = ContentScale.Fit

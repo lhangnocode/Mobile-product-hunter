@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.producthunt.MainActivity
+import android.app.producthunt.R
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,14 +51,16 @@ class PriceAlertNotificationNotifier @Inject constructor(
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Price alert triggered")
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_SOUND)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         try {
@@ -89,14 +92,16 @@ class PriceAlertNotificationNotifier @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_SOUND)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         try {

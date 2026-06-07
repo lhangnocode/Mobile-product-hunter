@@ -77,7 +77,7 @@ fun AuthGateScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.product_logo),
+                    painter = painterResource(id = R.mipmap.ic_launcher),
                     contentDescription = "Product Hunter",
                     modifier = Modifier.size(96.dp)
                 )

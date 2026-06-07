@@ -50,7 +50,7 @@ fun BackTopBar(
         Spacer(modifier = Modifier.width(15.dp))
 
         Image(
-            painter = painterResource(id = R.drawable.product_logo),
+            painter = painterResource(id = R.mipmap.ic_launcher),
             contentDescription = "Logo",
             modifier = Modifier.size(32.dp)
         )

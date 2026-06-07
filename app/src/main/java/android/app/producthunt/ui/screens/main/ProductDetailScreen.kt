@@ -456,7 +456,7 @@ fun ProductHeaderCinematic(listing: PlatformListingDto, imageUrl: String?) {
             )
         } else {
             Image(
-                painter = painterResource(id = R.drawable.product_logo),
+                painter = painterResource(id = R.mipmap.ic_launcher),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
