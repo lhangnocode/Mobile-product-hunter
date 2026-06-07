@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -64,6 +66,7 @@ import kotlin.math.roundToInt
 fun AlertCard(
     alert: PriceAlert,
     modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(20.dp),
     onClick: () -> Unit = {},
 ) {
     val strings = LocalAppStrings.current
@@ -86,7 +89,7 @@ fun AlertCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = shape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = if (isTargetReached) 4.dp else 3.dp),
@@ -153,6 +156,7 @@ fun SwipeToRevealAlertCard(
     val revealWidth = 72.dp
     val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
     val offsetX = remember { Animatable(0f) }
+    val isRevealing by remember { derivedStateOf { offsetX.value < -4f } }
     val scope = rememberCoroutineScope()
 
     fun snapClose() = scope.launch {
@@ -183,7 +187,10 @@ fun SwipeToRevealAlertCard(
                     modifier = Modifier
                         .width(revealWidth)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.error)
+                        .background(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp),
+                        )
                         .clickable { snapClose(); onDeleteClick() },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -224,7 +231,11 @@ fun SwipeToRevealAlertCard(
             ) {
                 AlertCard(
                     alert = alert,
-                    modifier = Modifier, // padding do outer Box xử lý
+                    modifier = Modifier,
+                    shape = if (isRevealing)
+                        RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
+                    else
+                        RoundedCornerShape(20.dp),
                     onClick = {
                         if (offsetX.value != 0f) snapClose() else onClick()
                     },
