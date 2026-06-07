@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Product Hunt</string>
+    <string name="deals_widget_description">Deals of the day and trending price drops</string>
 </resources>

@@ -1,305 +1,246 @@
-# ProductHunter API Documentation
+# Tai lieu API - Product Hunter
 
-FastAPI server exposing product, platform, price-tracking, wishlist, and authentication endpoints.
+Tai lieu nay thong ke cac endpoint dang duoc khai bao trong FastAPI server.
 
-- **Base URL:** `http://{HOST}:{PORT}` (default `http://0.0.0.0:3000`)
-- **API prefix:** `/api/v1`
-- **OpenAPI spec:** `/api/v1/openapi.json`
-- **Interactive docs:** `/docs` (Swagger), `/redoc`
+- API prefix: `/api/v1`
+- Bearer auth: gui header `Authorization: Bearer <access_token>`
+- Crawler auth: gui header `X-API-Key` khop voi `DEV_API_KEY`
+- FastAPI OpenAPI UI mac dinh: `/docs`
 
-## Root / Health
+## 1. System
 
-| Method | Path       | Auth | Description                         |
-|--------|------------|------|-------------------------------------|
-| GET    | `/`        | —    | Welcome message + API version       |
-| GET    | `/health`  | —    | Liveness probe. Returns `{status: "ok"}` |
+Hai endpoint nay khong dung prefix `/api/v1`.
 
----
+| Endpoint | Method | Tac dung |
+| :--- | :---: | :--- |
+| `/` | `GET` | Tra thong tin chao mung va version API. |
+| `/health` | `GET` | Health check cua API. |
 
-## Authentication
+## 2. Authentication & User (`/api/v1/auth`)
 
-### Token model
+| Endpoint | Method | Input chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/auth/register` | `POST` | JSON: `email`, `password`, optional `full_name` | No | `register` |
+| `/auth/login` | `POST` | OAuth2 form: `username`, `password` | No | `login` |
+| `/auth/me` | `GET` | - | Bearer | `get_my_profile` |
+| `/auth/premium-feature` | `POST` | - | Premium Bearer | `use_premium_feature` |
+| `/auth/refresh` | `POST` | JSON: `refresh_token` | No | `refresh_access_token` |
+| `/auth/forgot-password` | `POST` | JSON: `email` | No | `forgot_password` |
+| `/auth/reset-password` | `POST` | JSON: `token`, `new_password` | No | `reset_password` |
+| `/auth/{provider}/login` | `GET` | Query: optional `frontend_url` | No | `social_login` |
+| `/auth/{provider}/callback` | `GET` | OAuth callback query from provider | No | `social_callback` |
 
-All protected endpoints expect `Authorization: Bearer <access_token>`.
-Tokens are JWT, signed with `SECRET_KEY` (HS256).
+Social auth hien chi ho tro `google` va `github`. Endpoint login tra redirect sang provider; callback tra redirect ve frontend kem token neu OAuth thanh cong.
 
-- **Access token** — default 30 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`)
-- **Refresh token** — default 7 days (`REFRESH_TOKEN_EXPIRE_DAYS`)
+## 3. Products (`/api/v1/products`)
 
-### `POST /api/v1/auth/register`
-Create a new user account.
+| Endpoint | Method | Query chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/products/search` | `GET` | `q` length >= 2, optional `page`, `limit` | No | `search_products_list` |
+| `/products/` | `GET` | optional `skip`, `limit` | No | `get_all_products` |
+| `/products/searchAll` | `GET` | `q` length >= 2, optional `page`, `limit` | No | `search_products_list` |
+| `/products/compare` | `GET` | `q` length >= 2 | No | `search_and_compare_products` |
+| `/products/compare2` | `GET` | `q` length >= 2 | No | `search_and_compare_mock` |
 
-**Body** (`UserCreate`): `{ email, password, full_name }`
-**Response** (`UserResponse`): user object.
-Fails `400` if email already exists.
+`/products/compare2` ket hop product trong DB voi mock platform data dang nam trong module API, nen phu hop cho luong dev/test hien tai hon la nguon so sanh production.
 
-### `POST /api/v1/auth/login`
-OAuth2 password flow. Form-encoded (`application/x-www-form-urlencoded`).
+## 4. Crawler Ingest (`/api/v1/crawler`)
 
-**Body:** `username` (email), `password`
-**Response:** `{ access_token, refresh_token, token_type: "bearer" }`
+Tat ca endpoint trong group nay yeu cau `X-API-Key`.
 
-### `GET /api/v1/auth/me`  *(auth required)*
-Returns the authenticated user's profile.
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/crawler/products` | `POST` | JSON product ingest: `normalized_name`, `slug`, optional product fields | `upload_product` |
+| `/crawler/platform-products` | `POST` | JSON array platform-product ingest | `upload_platform_products_bulk` |
 
-### `POST /api/v1/auth/premium-feature`  *(auth required, premium plan)*
-Premium-plan-only demo endpoint. Returns a personalized message.
+Khi ingest platform product, server tao mot `price_records` entry moi cho gia tai thoi diem crawl.
 
-### `POST /api/v1/auth/refresh`
-Exchange a refresh token for a new access token.
+## 5. Platforms (`/api/v1/platforms`)
 
-**Body:** `{ "refresh_token": "..." }`
-**Response:** `{ access_token, refresh_token, token_type }`
+| Endpoint | Method | Input chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/platforms/` | `POST` | JSON: `name`, `base_url`, optional `affiliate_config` | No | `create_platform` |
+| `/platforms/` | `GET` | - | No | `get_platforms` |
 
-### `GET /api/v1/auth/{provider}/login`
-Redirects to the OAuth provider's consent page. Supported providers: `google`, `github`.
+## 6. Platform Products (`/api/v1/platform_products`)
 
-**Query:** optional `frontend_url` — where to redirect after successful login (must be whitelisted).
+| Endpoint | Method | Query chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/platform_products/platform-products/search` | `GET` | `name`, optional `page`, `limit` | No | `search_platform_products_endpoint` |
+| `/platform_products/platform-products/by-product-id` | `GET` | `product_id`, optional `page`, `limit` | No | `get_platform_products_by_product_id_endpoint` |
+| `/platform_products/platform-products` | `GET` | optional `offset`, `limit` | No | `get_all_platform_products` |
+| `/platform_products/platform-products/trending` | `GET` | optional `limit` | No | `get_trending_platform_products` |
 
-### `GET /api/v1/auth/{provider}/callback`
-OAuth callback. Creates a new user on first login, then redirects to the frontend:
+`limit` cua cac endpoint platform-product dang duoc validate trong khoang `1..100`.
 
-```
-{FRONTEND_URL}/?access_token=...&refresh_token=...
-```
+## 7. Price Records (`/api/v1/price_record`)
 
----
+| Endpoint | Method | Input chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/price_record/price-records` | `GET` | Query: optional `offset`, `limit` | No | `get_all_price_records` |
+| `/price_record/price-records/{platform_product_id}` | `GET` | Path UUID `platform_product_id` | No | `get_price_record_by_platform_product_id` |
+| `/price_record/price-records` | `POST` | JSON price record payload | No | `push_price_record` |
+| `/price_record/price-records/batch` | `POST` | JSON array price record payloads | No | `push_price_records_batch` |
+| `/price_record/price-analysis/{platform_product_id}` | `GET` | Path UUID; query `current_price`, `original_price` | No | `get_price_analysis` |
 
-## Products
+Price-record create payload:
 
-### `GET /api/v1/products/`
-Paginated list of all products.
-
-**Query:** `skip` (int, default 0), `limit` (int, default 100)
-**Response:** array of product objects.
-
-### `GET /api/v1/products/search`
-Full-text search across normalized product names.
-
-**Query:**
-- `q` — keyword, min length 2 (required)
-- `page` — default 1
-- `limit` — default 20, max 100
-
-**Response** (`SearchPaginatedResponse`):
-```json
-{
-  "keyword": "string",
-  "current_page": 1,
-  "total_pages": 10,
-  "total_results": 200,
-  "data": [ProductResponse, ...]
-}
-```
-
-### `GET /api/v1/products/searchAll`
-Same as `/search`, but `data` is a flat list of platform-product listings across all matching products.
-
-### `GET /api/v1/products/compare`
-Search + cross-platform price comparison using live DB data.
-
-**Query:** `q` (min 2 chars, required)
-**Response** (`SearchCompareResponse`):
-```json
-{
-  "keyword": "string",
-  "total_results": 5,
-  "data": [
-    {
-      "id": "uuid",
-      "normalized_name": "...",
-      "product_name": "...",
-      "slug": "...",
-      "main_image_url": "...",
-      "lowest_price": 5200000,
-      "platforms": [
-        {
-          "platform_id": 1,
-          "url": "...",
-          "affiliate_url": "...",
-          "current_price": 5200000,
-          "original_price": 5990000,
-          "in_stock": true,
-          "last_crawled_at": "2026-03-29T10:00:00Z"
-        }
-      ]
-    }
-  ]
-}
-```
-Results are sorted by `lowest_price` ascending.
-
-### `GET /api/v1/products/compare2`
-Identical shape to `/compare` but uses a hardcoded mock data set for demos. Still hits the DB to find matching products by `normalized_name ILIKE`.
-
----
-
-## Platforms
-
-### `POST /api/v1/platforms/`
-Create a new e-commerce platform record.
-
-**Body** (`PlatformCreateRequest`): `{ name, base_url, affiliate_config }`
-**Response** (`PlatformResponse`): platform with auto-generated `id`.
-
-### `GET /api/v1/platforms/`
-List all platforms.
-
----
-
-## Platform Products
-
-Platform-products are individual product listings on a specific platform (e.g. "iPhone 15 on Shopee").
-
-### `GET /api/v1/platform_products/platform-products`
-List all platform-products with pagination.
-
-**Query:** `limit` (1-100, default 10), `offset` (default 0)
-
-### `GET /api/v1/platform_products/platform-products/search`
-Search platform-products by product name or slug.
-
-**Query:** `name` (required), `limit` (1-100, default 20), `page` (default 1)
-
-### `GET /api/v1/platform_products/platform-products/by-product-id`
-All listings for a specific canonical product.
-
-**Query:** `product_id` (UUID, required), `limit`, `page`
-
-### `GET /api/v1/platform_products/platform-products/trending`
-Trending deals — items that are at their lowest recorded price, sorted by discount magnitude.
-
-**Query:** `limit` (1-100, default 20)
-**Response** (`TrendingDealResponse[]`): deal entries with discount info.
-
----
-
-## Price Records
-
-Historical price snapshots per platform-product, used for trend charts.
-
-### `GET /api/v1/price_record/price-records`
-Paginated list, newest first.
-
-**Query:** `limit` (1-100, default 20), `offset` (default 0)
-
-### `GET /api/v1/price_record/price-records/{platform_product_id}`
-Full history for one listing, oldest → newest.
-
-### `POST /api/v1/price_record/price-records`
-Insert a single price record.
-
-**Body** (`PriceRecordCreateRequest`):
 ```json
 {
   "platform_product_id": "uuid",
-  "price": 5200000,
-  "original_price": 5990000,
+  "price": 28000000,
+  "original_price": 34990000,
   "is_flash_sale": false,
-  "recorded_at": "2026-04-15T10:00:00Z"   // optional
+  "recorded_at": "2026-04-01T10:00:00Z"
 }
 ```
-Returns `404` if `platform_product_id` does not exist.
 
-### `POST /api/v1/price_record/price-records/batch`
-Insert multiple records at once. Invalid rows (unknown platform_product_id) are silently skipped.
+`original_price`, `is_flash_sale`, va `recorded_at` la optional. Batch create bo qua item co `platform_product_id` khong ton tai.
 
-**Body:** `PriceRecordCreateRequest[]`
-**Response:** array of created records.
+## 8. Price Alerts (`/api/v1/price_alerts`)
 
-### `GET /api/v1/price_record/price-analysis/{platform_product_id}`
-Compute a status analysis (is this current price historically low?).
+Tat ca endpoint trong group nay yeu cau Bearer auth.
 
-**Query:** `current_price` (float), `original_price` (float)
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/price_alerts/` | `POST` | JSON: `platform_product_id` or `product_id`, plus `target_price` | `create_or_update_alert` |
+| `/price_alerts/` | `GET` | - | `get_my_alerts` |
+| `/price_alerts/{platform_product_id}` | `DELETE` | Path UUID `platform_product_id` | `delete_price_alert` |
+| `/price_alerts/trigger` | `POST` | JSON: optional `product_id`, optional `platform_product_id` | `trigger_price_check` |
 
----
+Create/update payload:
 
-## Price Alerts  *(auth required)*
-
-User-defined price thresholds that send email notifications when triggered.
-
-### `POST /api/v1/price_alerts/`
-Create or update an alert for a product.
-
-**Body** (`PriceAlertCreate`): target product + desired price.
-**Response** (`PriceAlertResponse`).
-
-### `GET /api/v1/price_alerts/`
-List alerts for the current user.
-
-### `DELETE /api/v1/price_alerts/{product_id}`
-Remove a user's alert for a product.
-
-### `POST /api/v1/price_alerts/trigger`
-Triggered by the crawler/pipeline when a new lowest price is observed. Queues notification emails to all users who have a qualifying alert.
-
-**Body:**
 ```json
-{ "product_id": "uuid", "current_lowest_price": 4800000 }
+{
+  "platform_product_id": "uuid",
+  "target_price": 25000000
+}
 ```
-Runs in the background; responds immediately.
 
----
+`product_id` van duoc chap nhan de tu resolve sang mot platform product phu hop, nhung `platform_product_id` la cach ro rang hon vi alert hien theo doi dung offer tren tung san.
 
-## Wishlist  *(auth required)*
+Response item:
 
-### `POST /api/v1/wish_lists/`
-Add a product to the authenticated user's wishlist.
+```json
+{
+  "product_id": "uuid",
+  "platform_product_id": "uuid",
+  "target_price": 25000000,
+  "status": 0,
+  "product_name": "iPhone 15 Pro Max - Shopee",
+  "main_image_url": "https://example.com/image.jpg",
+  "current_price": 24990000
+}
+```
 
-**Body** (`WishListCreate`): `{ product_id: UUID }`
+`status`: `0` la active, `1` la triggered. `/price_alerts/trigger` kiem tra alert cua user dang dang nhap. Body `{}` la hop le de check tat ca alert cua user; body co `product_id` hoac `platform_product_id` gioi han pham vi check.
 
-### `GET /api/v1/wish_lists/`
-Get the current user's wishlist.
+## 9. Wish Lists (`/api/v1/wish_lists`)
 
-### `DELETE /api/v1/wish_lists/{product_id}`
-Remove a product from wishlist.
+Tat ca endpoint trong group nay yeu cau Bearer auth.
 
----
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/wish_lists/` | `POST` | JSON: `platform_product_id` or `product_id` | `create_wishlist_item` |
+| `/wish_lists/` | `GET` | - | `get_my_wishlist` |
+| `/wish_lists/{platform_product_id}` | `DELETE` | Path UUID `platform_product_id` | `delete_wishlist_item` |
 
-## Crawler Ingestion  *(dev API key required)*
+Wishlist item response fields include `product_id`, `platform_product_id`, `added_at`, optional `product_name`, optional `main_image_url`, optional `current_price`, and optional `original_price`.
 
-**All routes in this section require the header `X-API-Key: {DEV_API_KEY}`.**
-These are the endpoints the crawler/pipeline uses to push normalized data into the server.
+## 10. Device Tokens (`/api/v1/device_tokens`)
 
-### `POST /api/v1/crawler/products`
-Upsert a canonical product (brand/model/category + image).
+Tat ca endpoint trong group nay yeu cau Bearer auth. Mobile app dung group nay de dang ky FCM registration token cho push notification.
 
-**Body** (`ProductIngestRequest`)
-**Response** (`ProductIngestResponse`)
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/device_tokens/` | `POST` | JSON: `token`, optional `platform` default `android` | `register_device_token` |
+| `/device_tokens/{token}` | `DELETE` | Path string `token` | `remove_device_token` |
 
-### `POST /api/v1/crawler/platform-products`
-Bulk-upsert platform-product listings. Every upsert also creates a `PriceRecord` so historical pricing is retained on every crawl.
+Register/update payload:
 
-**Body:** `PlatformProductIngestRequest[]`
-**Response:** `PlatformProductIngestResponse[]`
-Upsert key: `(platform_id, original_item_id)`.
-If `last_crawled_at` is missing, the server stamps `now()`.
+```json
+{
+  "token": "fcm-registration-token",
+  "platform": "android"
+}
+```
 
----
+Register response:
 
-## Auth requirements summary
+```json
+{
+  "id": "uuid",
+  "token": "fcm-registration-token",
+  "platform": "android",
+  "is_active": true,
+  "created_at": "2026-06-05T10:00:00Z",
+  "updated_at": "2026-06-05T10:00:00Z",
+  "last_seen_at": "2026-06-05T10:00:00Z"
+}
+```
 
-| Label | Meaning |
-|--------|---------|
-| `auth required` | Requires `Authorization: Bearer <access_token>` |
-| `premium plan` | Requires the user's plan to be Premium |
-| `dev API key required` | Requires the `X-API-Key: {DEV_API_KEY}` header |
+`POST` upsert theo token: neu token da ton tai thi cap nhat user, platform, danh dau active va refresh `last_seen_at`. `DELETE` chi deactivate token cua user dang dang nhap; user khac khong deactivate duoc token nay.
 
-## Environment configuration
+## 11. Advisor (`/api/v1/advisor`)
 
-Key variables from `server/.env`:
+| Endpoint | Method | Input chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/advisor/chat` | `POST` | JSON: `message`, optional `history`, optional `context` | No | `advisor_chat` |
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `HOST` / `PORT` | `0.0.0.0` / `3000` | Bind address |
-| `POSTGRES_*` | — | Main DB connection |
-| `TYPESENSE_*` | — | Search index |
-| `SECRET_KEY` | — (required) | JWT signing |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
-| `DEV_API_KEY` | — | Header value for crawler ingestion |
-| `GOOGLE_CLIENT_ID/SECRET` | — | Google OAuth |
-| `GITHUB_CLIENT_ID/SECRET` | — | GitHub OAuth |
-| `FRONTEND_URL` / `BACKEND_URL` | — | OAuth redirect base URLs |
-| `MAIL_*` | — | SMTP for price-alert emails |
-| `ALLOWED_ORIGINS` | `["*"]` | CORS |
+Advisor tra ve `answer`, danh sach `recommendations`, va `sources`. Service co the tra
+`503` neu thieu cau hinh provider, `502` neu provider loi, hoac `500` neu retrieval loi.
+
+## 12. Agent (`/api/v1/agent`)
+
+| Endpoint | Method | Input chinh | Auth | Ham xu ly |
+| :--- | :---: | :--- | :---: | :--- |
+| `/agent/chat` | `POST` | JSON: `message`, optional `history`, optional `context`, optional `include_tool_trace` | No | `agent_chat` |
+| `/agent/chat/stream` | `POST` | Same payload as `/agent/chat` | No | `agent_chat_stream` |
+
+Agent request payload:
+
+```json
+{
+  "message": "Find me a good laptop deal",
+  "history": [
+    {
+      "role": "user",
+      "content": "I prefer ASUS"
+    }
+  ],
+  "context": {
+    "active_tab": "search",
+    "search_query": "laptop",
+    "product_id": "uuid",
+    "shop_id": 1
+  },
+  "include_tool_trace": true
+}
+```
+
+`/agent/chat` tra JSON gom `answer`, `recommendations`, `sources`, `tool_trace`, `handoff_required`, `alternatives`, `objection_answers`, `urgency_cues`, va optional `disclaimer`. `/agent/chat/stream` tra Server-Sent Events voi `media_type` la `text/event-stream`.
+
+## 13. Payments (`/api/v1/payments`)
+
+Endpoint nay yeu cau Bearer auth.
+
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/payments/request` | `POST` | Multipart form: `amount`, file `receipt` | `create_payment_request` |
+
+Server luu receipt vao `static/receipts` va tao `payment_requests` row voi `status = 0` pending.
+
+## 14. Admin (`/api/v1/admin`)
+
+Tat ca endpoint trong group nay yeu cau Bearer auth cua user nam trong danh sach admin server-side.
+
+| Endpoint | Method | Input chinh | Ham xu ly |
+| :--- | :---: | :--- | :--- |
+| `/admin/overview` | `GET` | - | `get_admin_overview` |
+| `/admin/users` | `GET` | - | `list_users` |
+| `/admin/users/{user_id}/plan` | `PATCH` | JSON: `plan` (`0` or `1`) | `update_user_plan` |
+| `/admin/payments` | `GET` | - | `list_payments` |
+| `/admin/payments/{payment_id}/approve` | `POST` | Path UUID `payment_id` | `approve_payment` |
+| `/admin/payments/{payment_id}/reject` | `POST` | Path UUID `payment_id` | `reject_payment` |
+
+Admin overview tra ve counts, recent products va sample offers. Payment approval set payment `status = 1` va nang user len plan premium (`plan = 1`); reject set `status = 2`.
