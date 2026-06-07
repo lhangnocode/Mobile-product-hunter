@@ -113,11 +113,13 @@ fun AlertCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = alert.subtitle,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (alert.subtitle.isNotBlank()) {
+                        Text(
+                            text = alert.subtitle,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 

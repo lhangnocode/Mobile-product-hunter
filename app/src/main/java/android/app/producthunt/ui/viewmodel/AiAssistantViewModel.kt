@@ -68,6 +68,7 @@ class AiAssistantViewModel @Inject constructor(
                 is UiState.Success -> {
                     val answer = result.data.answer.ifBlank { "No response from Agent API." }
                     updateMessage(responseIndex, answer, isLoading = false)
+                    persistAgentApiExchange(query, answer)
                     _uiState.update { it.copy(isSending = false) }
                 }
                 is UiState.Error -> {
@@ -133,18 +134,26 @@ class AiAssistantViewModel @Inject constructor(
 
         viewModelScope.launch {
             val messages = conversationRepository.getMessages(conversationId)
+            val conversation = conversationRepository.getConversation(conversationId)
+            val mode = if (conversation?.agentId == AGENT_API_CONVERSATION_AGENT_ID) {
+                AiAssistantMode.AGENT_API
+            } else {
+                AiAssistantMode.ON_DEVICE
+            }
             this@AiAssistantViewModel.conversationId = conversationId
             _uiState.value = AiAssistantUiState(
                 messages = messages.toAiAssistantMessages(),
-                mode = AiAssistantMode.ON_DEVICE,
+                mode = mode,
             )
 
-            AgentOrchestrator.switchConversation(conversationId)
-                .onFailure { error ->
-                    val message = error.message ?: "Unable to switch AI conversation"
-                    ILog.e(TAG, "loadConversation", "switch failed", conversationId, throwable = error)
-                    _uiState.update { it.copy(errorMessage = message) }
-                }
+            if (mode == AiAssistantMode.ON_DEVICE) {
+                AgentOrchestrator.switchConversation(conversationId)
+                    .onFailure { error ->
+                        val message = error.message ?: "Unable to switch AI conversation"
+                        ILog.e(TAG, "loadConversation", "switch failed", conversationId, throwable = error)
+                        _uiState.update { it.copy(errorMessage = message) }
+                    }
+            }
         }
     }
 
@@ -181,6 +190,34 @@ class AiAssistantViewModel @Inject constructor(
                 )
             }
 
+    private suspend fun persistAgentApiExchange(query: String, answer: String) {
+        val conversation = conversationId
+            ?.let { conversationRepository.getConversation(it) }
+            ?: conversationRepository.createConversation(
+                agentId = AGENT_API_CONVERSATION_AGENT_ID,
+                title = query.toConversationTitle(),
+            )
+        conversationId = conversation.id
+
+        if (conversation.title.isNullOrBlank()) {
+            conversationRepository.upsertConversation(
+                conversation.copy(
+                    title = query.toConversationTitle(),
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        conversationRepository.appendUserMessage(
+            conversationId = conversation.id,
+            text = query,
+        )
+        conversationRepository.appendModelMessage(
+            conversationId = conversation.id,
+            text = answer,
+        )
+    }
+
     private fun List<AgentMessageEntity>.toAiAssistantMessages(): List<AiAssistantMessage> =
         mapNotNull { message ->
             when (message.role) {
@@ -202,8 +239,14 @@ class AiAssistantViewModel @Inject constructor(
             if (input.isBlank()) status else "$status\n$input"
         }
 
+    private fun String.toConversationTitle(): String {
+        val compact = trim().replace(Regex("\\s+"), " ")
+        return if (compact.length <= 56) compact else compact.take(53).trimEnd() + "..."
+    }
+
     private companion object {
         private const val TAG = "AiAssistantViewModel"
+        private const val AGENT_API_CONVERSATION_AGENT_ID = "product_hunter_agent_api"
         private const val MAX_AGENT_HISTORY_ITEMS = 20
         private const val MAX_AGENT_MESSAGE_LENGTH = 4000
     }

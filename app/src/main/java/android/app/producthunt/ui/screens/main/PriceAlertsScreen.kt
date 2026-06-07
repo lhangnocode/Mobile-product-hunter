@@ -96,7 +96,7 @@ fun PriceAlertsScreen(
             PriceAlert(
                 id = index,
                 name = productName,
-                subtitle = productDetails.ifBlank { strings.productFallback(dto.productId) },
+                subtitle = productDetails,
                 imageUrl = dto.product?.mainImageUrl ?: dto.mainImageUrl,
                 currentPrice = currentPrice,
                 targetPrice = dto.targetPrice,
