@@ -39,7 +39,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,7 +59,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
+import androidx.compose.ui.graphics.luminance
 
 @Composable
 fun AlertCard(
@@ -72,30 +71,42 @@ fun AlertCard(
     val strings = LocalAppStrings.current
     val currentPrice = alert.currentPrice
     val isTargetReached = alert.targetReached
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    val containerColor = if (isTargetReached) {
+        if (isDark) Color(0xFF18322F) else Color(0xFFEAF8F2)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
     val cardBorder = if (isTargetReached) {
-        BorderStroke(1.25.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.72f))
+        BorderStroke(1.25.dp, Color(0xFF14B88A).copy(alpha = 0.72f))
     } else {
         BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
     }
-    val progress = if (currentPrice != null && currentPrice > 0.0) {
-        ((currentPrice - alert.targetPrice) / currentPrice)
+
+    val progress = if (isTargetReached) {
+        1f
     } else {
-        0.0
+        if (currentPrice != null && currentPrice > 0.0) {
+            ((currentPrice - alert.targetPrice) / currentPrice)
+        } else {
+            0.0
+        }
+            .toFloat()
+            .coerceIn(0f, 1f)
     }
-        .toFloat()
-        .coerceIn(0f, 1f)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         border = cardBorder,
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isTargetReached) 4.dp else 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isTargetReached) 5.dp else 3.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Product row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -125,7 +136,6 @@ fun AlertCard(
 
             Spacer(Modifier.height(14.dp))
 
-            // Prices
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -136,7 +146,6 @@ fun AlertCard(
 
             Spacer(Modifier.height(10.dp))
 
-            // Progress bar
             PriceProgressBar(progress = progress, targetReached = isTargetReached)
 
             Spacer(Modifier.height(8.dp))
@@ -156,9 +165,9 @@ fun SwipeToRevealAlertCard(
     onClick: () -> Unit = {},
 ) {
     val revealWidth = 72.dp
+    val itemShape = RoundedCornerShape(20.dp)
     val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
     val offsetX = remember { Animatable(0f) }
-    val isRevealing by remember { derivedStateOf { offsetX.value < -4f } }
     val scope = rememberCoroutineScope()
 
     fun snapClose() = scope.launch {
@@ -178,7 +187,8 @@ fun SwipeToRevealAlertCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .clip(RoundedCornerShape(20.dp)),
+                .clip(itemShape)
+                .background(MaterialTheme.colorScheme.error),
         ) {
             // Nút xóa — matchParentSize lấy chiều cao từ card
             Box(
@@ -234,10 +244,7 @@ fun SwipeToRevealAlertCard(
                 AlertCard(
                     alert = alert,
                     modifier = Modifier,
-                    shape = if (isRevealing)
-                        RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
-                    else
-                        RoundedCornerShape(20.dp),
+                    shape = itemShape,
                     onClick = {
                         if (offsetX.value != 0f) snapClose() else onClick()
                     },

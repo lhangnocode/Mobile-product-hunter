@@ -195,7 +195,7 @@ private fun ProductListSection(
                 }
             }
         }
-        is UiState.Loading -> {
+        is UiState.Loading, UiState.Idle -> {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = PH_Primary)
             }
@@ -205,7 +205,6 @@ private fun ProductListSection(
                 Text(text = "Failed to load deals", color = MaterialTheme.colorScheme.error)
             }
         }
-        else -> {}
     }
 }
 

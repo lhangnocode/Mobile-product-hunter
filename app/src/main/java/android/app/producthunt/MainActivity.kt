@@ -28,6 +28,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -35,6 +36,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -72,11 +75,13 @@ class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     private val themeViewModel: ThemeViewModel by viewModels()
     private val pendingNotificationIntent = MutableStateFlow<Intent?>(null)
+    private val notificationAccess = MutableStateFlow(false)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingNotificationIntent.value = intent
+        updateNotificationAccess()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
         )
@@ -124,53 +129,49 @@ class MainActivity : ComponentActivity() {
                 val chrome = currentRoute.toChromeConfig(strings)
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
-                val currentPostNotificationPermission =
-                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                        ContextCompat.checkSelfPermission(
-                            this@MainActivity,
-                            Manifest.permission.POST_NOTIFICATIONS,
-                        ) == PackageManager.PERMISSION_GRANTED
-                var hasPostNotificationPermission by remember {
-                    mutableStateOf(currentPostNotificationPermission)
-                }
-                var hasRequestedPostNotificationPermission by remember {
-                    mutableStateOf(false)
-                }
-                LaunchedEffect(currentPostNotificationPermission) {
-                    hasPostNotificationPermission = currentPostNotificationPermission
+                val hasNotificationAccess by notificationAccess.collectAsState()
+                fun currentNotificationAccess(): Boolean =
+                    hasPostNotificationPermission() && areAppNotificationsEnabled()
+                LaunchedEffect(priceAlertNotificationsEnabled, hasNotificationAccess) {
+                    if (priceAlertNotificationsEnabled != hasNotificationAccess) {
+                        themeViewModel.setPriceAlertNotificationsEnabled(hasNotificationAccess)
+                    }
                 }
                 val effectivePriceAlertNotificationsEnabled =
-                    priceAlertNotificationsEnabled && hasPostNotificationPermission
+                    priceAlertNotificationsEnabled && hasNotificationAccess
                 val notificationPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission(),
                 ) { isGranted ->
-                    hasPostNotificationPermission = isGranted
-                    if (isGranted) {
+                    val canNotify = isGranted && areAppNotificationsEnabled()
+                    notificationAccess.value = canNotify
+                    if (canNotify) {
                         themeViewModel.setPriceAlertNotificationsEnabled(true)
-                    }
-                }
-                LaunchedEffect(
-                    isAuthenticated,
-                    priceAlertNotificationsEnabled,
-                    hasPostNotificationPermission,
-                ) {
-                    if (
-                        isAuthenticated &&
-                            priceAlertNotificationsEnabled &&
-                            !hasPostNotificationPermission &&
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            !hasRequestedPostNotificationPermission
-                    ) {
-                        hasRequestedPostNotificationPermission = true
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        themeViewModel.setPriceAlertNotificationsEnabled(false)
+                        if (shouldOpenNotificationSettingsAfterPermissionDenied()) {
+                            openAppNotificationSettings()
+                        }
                     }
                 }
                 val onPriceAlertNotificationsChange: (Boolean) -> Unit = { enabled ->
                     if (!enabled) {
-                        themeViewModel.setPriceAlertNotificationsEnabled(false)
-                    } else if (!hasPostNotificationPermission) {
+                        if (currentNotificationAccess()) {
+                            openAppNotificationSettings()
+                        } else {
+                            notificationAccess.value = false
+                            themeViewModel.setPriceAlertNotificationsEnabled(false)
+                        }
+                    } else if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        !hasPostNotificationPermission()
+                    ) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else if (!currentNotificationAccess()) {
+                        notificationAccess.value = false
+                        themeViewModel.setPriceAlertNotificationsEnabled(false)
+                        openAppNotificationSettings()
                     } else {
+                        notificationAccess.value = true
                         themeViewModel.setPriceAlertNotificationsEnabled(true)
                     }
                 }
@@ -291,6 +292,40 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingNotificationIntent.value = intent
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateNotificationAccess()
+    }
+
+    private fun hasPostNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+
+    private fun areAppNotificationsEnabled(): Boolean =
+        NotificationManagerCompat.from(this).areNotificationsEnabled()
+
+    private fun shouldOpenNotificationSettingsAfterPermissionDenied(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !hasPostNotificationPermission() &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            )
+
+    private fun updateNotificationAccess() {
+        notificationAccess.value = hasPostNotificationPermission() && areAppNotificationsEnabled()
+    }
+
+    private fun openAppNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
     }
 }
 
