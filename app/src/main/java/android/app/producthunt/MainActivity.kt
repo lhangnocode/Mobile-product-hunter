@@ -25,6 +25,7 @@ import android.app.producthunt.ui.viewmodel.AuthViewModel
 import android.app.producthunt.ui.viewmodel.ThemeViewModel
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -679,8 +680,14 @@ private fun String?.toChromeConfig(strings: AppStrings): ChromeConfig =
 private fun PriceAlertNotificationPayload.toProductDetailRoute(): String =
     buildString {
         append("${Route.PRODUCT_DETAIL}/$productId")
-        if (!platformProductId.isNullOrBlank()) {
-            append("?platformProductId=$platformProductId")
+        val params = buildList {
+            if (!imageUrl.isNullOrBlank()) add("imageUrl=${Uri.encode(imageUrl)}")
+            if (!productName.isNullOrBlank()) add("productName=${Uri.encode(productName)}")
+            if (!platformProductId.isNullOrBlank()) add("platformProductId=$platformProductId")
+        }
+        if (params.isNotEmpty()) {
+            append("?")
+            append(params.joinToString("&"))
         }
     }
 

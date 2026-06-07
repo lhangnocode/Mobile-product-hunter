@@ -3,7 +3,7 @@ package android.app.producthunt.data.remote
 import com.google.gson.JsonParser
 import retrofit2.HttpException
 
-internal object ApiErrorParser {
+object ApiErrorParser {
     fun messageFrom(throwable: Throwable, fallback: String): String {
         val httpException = throwable as? HttpException ?: return throwable.message ?: fallback
         val errorBody = httpException.response()?.errorBody()?.string()

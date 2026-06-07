@@ -13,6 +13,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
     private val platformProductRepository: PlatformProductRepository,
+    private val productRepository: ProductRepository,
     private val priceRecordRepository: PriceRecordRepository,
     private val wishlistRepository: WishlistRepository,
     private val priceAlertRepository: PriceAlertRepository,
@@ -29,6 +30,9 @@ class ProductDetailViewModel @Inject constructor(
 
     private val _selectedListing = MutableStateFlow<PlatformListingDto?>(null)
     val selectedListing: StateFlow<PlatformListingDto?> = _selectedListing.asStateFlow()
+
+    private val _productMetadata = MutableStateFlow<ProductDetailMetadata?>(null)
+    val productMetadata: StateFlow<ProductDetailMetadata?> = _productMetadata.asStateFlow()
 
     private val _priceAlertState = MutableStateFlow<UiState<PriceAlertResponse>>(UiState.Idle)
     val priceAlertState: StateFlow<UiState<PriceAlertResponse>> = _priceAlertState.asStateFlow()
@@ -68,6 +72,7 @@ class ProductDetailViewModel @Inject constructor(
         currentProductId.value = productId
         currentPlatformProductId.value = null
         _selectedListing.value = null
+        _productMetadata.value = null
         viewModelScope.launch {
             _listingsState.value = UiState.Loading
             
@@ -79,9 +84,11 @@ class ProductDetailViewModel @Inject constructor(
             if (priceAlertRepository.alerts.value is UiState.Idle) {
                 priceAlertRepository.refresh()
             }
+            applyPriceAlertMetadata(initialPlatformProductId)
             
             val listingsResult = platformProductRepository.getListingsByProductId(productId)
             _listingsState.value = listingsResult
+            loadProductMetadata(productId)
 
             if (listingsResult is UiState.Success && listingsResult.data.isNotEmpty()) {
                 val firstListing = listingsResult.data
@@ -97,6 +104,39 @@ class ProductDetailViewModel @Inject constructor(
                 loadAnalysis(firstListing.id, currentPrice, originalPrice)
             }
         }
+    }
+
+    private fun applyPriceAlertMetadata(platformProductId: String?) {
+        if (platformProductId.isNullOrBlank()) return
+
+        val alerts = (priceAlertRepository.alerts.value as? UiState.Success)?.data.orEmpty()
+        val alert = alerts.firstOrNull { it.platformProductId == platformProductId } ?: return
+        mergeProductMetadata(
+            imageUrl = alert.product?.mainImageUrl ?: alert.mainImageUrl,
+            productName = alert.product?.productName ?: alert.productName ?: alert.rawName,
+        )
+    }
+
+    private fun loadProductMetadata(productId: String) {
+        viewModelScope.launch {
+            val result = productRepository.getProductById(productId)
+            if (result is UiState.Success) {
+                if (currentProductId.value != productId) return@launch
+                val product = result.data
+                mergeProductMetadata(
+                    imageUrl = product.mainImageUrl,
+                    productName = product.productName ?: product.rawName ?: product.normalizedName,
+                )
+            }
+        }
+    }
+
+    private fun mergeProductMetadata(imageUrl: String?, productName: String?) {
+        val current = _productMetadata.value
+        _productMetadata.value = ProductDetailMetadata(
+            imageUrl = current?.imageUrl ?: imageUrl,
+            productName = current?.productName ?: productName,
+        )
     }
 
     private fun loadPriceHistory(platformProductId: String) {
@@ -159,6 +199,11 @@ class ProductDetailViewModel @Inject constructor(
         _wishlistActionState.value = UiState.Idle
     }
 }
+
+data class ProductDetailMetadata(
+    val imageUrl: String?,
+    val productName: String?,
+)
 
 private fun List<PlatformListingDto>.bestPricedListing(): PlatformListingDto =
     minByOrNull { it.currentPrice.toDoubleOrNull() ?: Double.MAX_VALUE } ?: first()

@@ -2,12 +2,14 @@ package android.app.producthunt.di
 
 import android.app.producthunt.core.notification.FcmTokenRegistrar
 import android.app.producthunt.data.local.TokenDataStore
+import android.app.producthunt.data.remote.api.AgentApiService
 import android.app.producthunt.data.remote.api.AuthApiService
 import android.app.producthunt.data.remote.api.PlatformProductApiService
 import android.app.producthunt.data.remote.api.PriceAlertApiService
 import android.app.producthunt.data.remote.api.PriceRecordApiService
 import android.app.producthunt.data.remote.api.ProductApiService
 import android.app.producthunt.data.remote.api.WishlistApiService
+import android.app.producthunt.data.repository.AgentChatRepository
 import android.app.producthunt.data.repository.AuthRepository
 import android.app.producthunt.data.repository.PlatformProductRepository
 import android.app.producthunt.data.repository.PriceAlertRepository
@@ -31,6 +33,10 @@ object RepositoryModule {
         fcmTokenRegistrar: FcmTokenRegistrar,
     ): AuthRepository =
         AuthRepository(api, tokenDataStore, fcmTokenRegistrar)
+
+    @Provides @Singleton
+    fun provideAgentChatRepository(api: AgentApiService): AgentChatRepository =
+        AgentChatRepository(api)
 
     @Provides @Singleton
     fun provideProductRepository(api: ProductApiService): ProductRepository =
