@@ -16,6 +16,18 @@ class ProductRepository @Inject constructor(
         UiState.Error(e.message ?: "Failed to load products")
     }
 
+    suspend fun getProductById(productId: String): UiState<ProductResponse> = try {
+        val product = api.getProducts(limit = PRODUCT_LOOKUP_LIMIT)
+            .firstOrNull { it.id == productId }
+        if (product != null) {
+            UiState.Success(product)
+        } else {
+            UiState.Error("Product not found")
+        }
+    } catch (e: Exception) {
+        UiState.Error(e.message ?: "Failed to load product")
+    }
+
     suspend fun search(q: String, page: Int = 1, limit: Int = 20): UiState<SearchPaginatedResponse> = try {
         UiState.Success(api.search(q, page, limit))
     } catch (e: Exception) {
@@ -26,5 +38,9 @@ class ProductRepository @Inject constructor(
         UiState.Success(api.compare(q))
     } catch (e: Exception) {
         UiState.Error(e.message ?: "Compare failed")
+    }
+
+    private companion object {
+        const val PRODUCT_LOOKUP_LIMIT = 1000
     }
 }

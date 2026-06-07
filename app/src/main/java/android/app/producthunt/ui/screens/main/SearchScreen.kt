@@ -10,6 +10,7 @@ import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.i18n.LocalLanguageMode
 import android.app.producthunt.ui.i18n.formatPriceFromVnd
 import android.app.producthunt.ui.navigation.Route
+import android.app.producthunt.ui.state.AiAssistantMode
 import android.app.producthunt.ui.state.AiAssistantMessage
 import android.app.producthunt.ui.theme.*
 import android.app.producthunt.ui.viewmodel.AiAssistantViewModel
@@ -262,6 +263,8 @@ private fun AiAssistantPanel(
             value = query,
             onValueChange = { query = it },
             mode = "AI Agent",
+            aiMode = state.mode,
+            onAiModeChange = viewModel::setMode,
             onSend = {
                 if (query.isNotBlank()) {
                     val queryToSend = query
@@ -273,6 +276,73 @@ private fun AiAssistantPanel(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun AiModeDropdown(
+    selectedMode: AiAssistantMode,
+    onModeChange: (AiAssistantMode) -> Unit,
+) {
+    val strings = LocalAppStrings.current
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = when (selectedMode) {
+        AiAssistantMode.AGENT_API -> strings.aiModeAgentApi
+        AiAssistantMode.ON_DEVICE -> strings.aiModeOnDevice
+    }
+
+    Box {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(18.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = selectedLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 116.dp),
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(strings.aiModeAgentApi) },
+                leadingIcon = {
+                    Icon(Icons.Default.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+                onClick = {
+                    onModeChange(AiAssistantMode.AGENT_API)
+                    expanded = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(strings.aiModeOnDevice) },
+                leadingIcon = {
+                    Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+                onClick = {
+                    onModeChange(AiAssistantMode.ON_DEVICE)
+                    expanded = false
+                },
+            )
+        }
     }
 }
 
@@ -1205,7 +1275,14 @@ fun PriceRowItem(store: String, p1: String, p2: String) {
 }
 
 @Composable
-fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, onSend: () -> Unit) {
+fun ChatInputArea(
+    value: String,
+    onValueChange: (String) -> Unit,
+    mode: String,
+    onSend: () -> Unit,
+    aiMode: AiAssistantMode? = null,
+    onAiModeChange: ((AiAssistantMode) -> Unit)? = null,
+) {
     val strings = LocalAppStrings.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1239,15 +1316,26 @@ fun ChatInputArea(value: String, onValueChange: (String) -> Unit, mode: String, 
                 shape = RoundedCornerShape(26.dp),
                 trailingIcon = {
                     val submitIcon = if (mode == "Search") Icons.Default.Search else Icons.Default.ArrowUpward
-                    IconButton(
-                        onClick = onSend,
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFCA5A5))
+                    Row(
+                        modifier = Modifier.padding(end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(submitIcon, contentDescription = null, tint = Color(0xFF450A0A), modifier = Modifier.size(20.dp))
+                        if (mode == "AI Agent" && aiMode != null && onAiModeChange != null) {
+                            AiModeDropdown(
+                                selectedMode = aiMode,
+                                onModeChange = onAiModeChange,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        IconButton(
+                            onClick = onSend,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFCA5A5))
+                        ) {
+                            Icon(submitIcon, contentDescription = null, tint = Color(0xFF450A0A), modifier = Modifier.size(20.dp))
+                        }
                     }
                 }
             )

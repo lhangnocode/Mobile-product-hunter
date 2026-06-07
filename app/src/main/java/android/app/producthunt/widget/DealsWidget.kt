@@ -277,6 +277,8 @@ private fun openDealIntent(
         PriceAlertNotificationPayload(
             productId = deal.detailProductId,
             platformProductId = deal.detailPlatformProductId,
+            imageUrl = deal.mainImageUrl,
+            productName = deal.productName,
         )
     )
 
