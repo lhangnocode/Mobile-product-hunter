@@ -118,7 +118,7 @@ private fun DealsWidgetContent(
                                 context = context,
                             )
                             if (index != state.deals.lastIndex) {
-                                Spacer(modifier = GlanceModifier.height(8.dp))
+                                Spacer(modifier = GlanceModifier.height(12.dp))
                             }
                         }
                     }
