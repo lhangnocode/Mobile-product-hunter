@@ -8,6 +8,7 @@ import android.app.producthunt.data.local.db.entity.AgentMessageEntity
 import android.app.producthunt.data.local.db.entity.AgentMessageRole
 import android.app.producthunt.data.remote.dto.AgentChatContext
 import android.app.producthunt.data.remote.dto.AgentChatHistoryItem
+import android.app.producthunt.data.remote.dto.AgentChatStreamEvent
 import android.app.producthunt.data.repository.AgentChatRepository
 import android.app.producthunt.data.repository.AgentConversationRepository
 import android.app.producthunt.ui.state.AiAssistantMode
@@ -55,27 +56,51 @@ class AiAssistantViewModel @Inject constructor(
         val history = recentAgentApiHistory()
         viewModelScope.launch {
             updateMessage(responseIndex, "Thinking...", isLoading = true)
-            when (
-                val result = agentChatRepository.chat(
+            val answerBuilder = StringBuilder()
+            var finalized = false
+
+            try {
+                agentChatRepository.chatStream(
                     message = query,
                     history = history,
                     context = AgentChatContext(
                         activeTab = "user_chatbot:search",
                         searchQuery = query,
                     ),
-                )
-            ) {
-                is UiState.Success -> {
-                    val answer = result.data.answer.ifBlank { "No response from Agent API." }
-                    updateMessage(responseIndex, answer, isLoading = false)
-                    persistAgentApiExchange(query, answer)
-                    _uiState.update { it.copy(isSending = false) }
+                ).collect { event ->
+                    when (event) {
+                        AgentChatStreamEvent.Started -> Unit
+                        is AgentChatStreamEvent.Status -> {
+                            if (answerBuilder.isBlank()) {
+                                updateMessage(responseIndex, event.text, isLoading = true)
+                            }
+                        }
+                        is AgentChatStreamEvent.Delta -> {
+                            answerBuilder.append(event.text)
+                            updateMessage(responseIndex, answerBuilder.toString(), isLoading = true)
+                        }
+                        is AgentChatStreamEvent.Completed -> {
+                            finalized = true
+                            val answer = event.answer?.takeIf { it.isNotBlank() }
+                                ?: answerBuilder.toString()
+                            val finalAnswer = answer.ifBlank { "No response from Agent API." }
+                            updateMessage(responseIndex, finalAnswer, isLoading = false)
+                            persistAgentApiExchange(query, finalAnswer)
+                        }
+                    }
                 }
-                is UiState.Error -> {
-                    updateMessage(responseIndex, result.message, isLoading = false)
-                    _uiState.update { it.copy(isSending = false, errorMessage = result.message) }
+
+                if (!finalized) {
+                    val finalAnswer = answerBuilder.toString().ifBlank { "No response from Agent API." }
+                    updateMessage(responseIndex, finalAnswer, isLoading = false)
+                    persistAgentApiExchange(query, finalAnswer)
                 }
-                else -> Unit
+
+                _uiState.update { it.copy(isSending = false) }
+            } catch (e: Exception) {
+                val message = e.message ?: "Agent API request failed"
+                updateMessage(responseIndex, message, isLoading = false)
+                _uiState.update { it.copy(isSending = false, errorMessage = message) }
             }
         }
     }

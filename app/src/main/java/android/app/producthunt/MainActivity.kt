@@ -42,6 +42,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
@@ -395,131 +397,137 @@ fun AppDrawerContent(
             )
         }
 
-        NavigationDrawerItem(
-            label = { Text(strings.newSearch, fontWeight = FontWeight.Medium) },
-            selected = false,
-            onClick = onNewSearch,
-            icon = { CustomIcon(PHIcons.Add, contentDescription = null) },
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(strings.history, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
-
-        if (agentConversations.isEmpty()) {
-            EmptyHistoryPlaceholder(
-                title = strings.historyEmptyTitle,
-                description = strings.historyEmptyDescription,
-            )
-        }
-
-        agentConversations.take(6).forEach { conversation ->
-            AgentHistoryDrawerItem(
-                conversation = conversation,
-                onClick = { onConversationClick(conversation.id) },
-                onDeleteClick = { pendingDeleteConversation = conversation },
-            )
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
-
-        Text("Agent", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
-
-        NavigationDrawerItem(
-            label = { Text("AI Agent") },
-            selected = false,
-            onClick = onAgentManagement,
-            icon = { CustomIcon(Icons.Default.AutoAwesome, contentDescription = null) },
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
-
-        Text(strings.appearance, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onNotificationsEnabledChange(!priceAlertNotificationsEnabled) }
-                .padding(12.dp)
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
         ) {
-            CustomIcon(
-                if (priceAlertNotificationsEnabled) Icons.Default.Notifications else Icons.Default.NotificationsOff,
-                contentDescription = null,
+            NavigationDrawerItem(
+                label = { Text(strings.newSearch, fontWeight = FontWeight.Medium) },
+                selected = false,
+                onClick = onNewSearch,
+                icon = { CustomIcon(PHIcons.Add, contentDescription = null) },
+                shape = RoundedCornerShape(12.dp)
             )
-            Spacer(Modifier.width(12.dp))
-            Text(strings.alerts, modifier = Modifier.weight(1f))
-            Switch(
-                checked = priceAlertNotificationsEnabled,
-                onCheckedChange = onNotificationsEnabledChange,
-            )
-        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onThemeChange(if (themeMode == ThemeMode.DARK) ThemeMode.LIGHT else ThemeMode.DARK) }
-                .padding(12.dp)
-        ) {
-            CustomIcon(if (themeMode == ThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = null)
-            Spacer(Modifier.width(12.dp))
-            Text(strings.darkMode, modifier = Modifier.weight(1f))
-            Switch(
-                checked = themeMode == ThemeMode.DARK,
-                onCheckedChange = { onThemeChange(if (it) ThemeMode.DARK else ThemeMode.LIGHT) }
-            )
-        }
+            Spacer(Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CustomIcon(Icons.Default.Language, contentDescription = null)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = strings.language,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.fillMaxWidth(),
+            Text(strings.history, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+
+            if (agentConversations.isEmpty()) {
+                EmptyHistoryPlaceholder(
+                    title = strings.historyEmptyTitle,
+                    description = strings.historyEmptyDescription,
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        modifier = Modifier.weight(1f),
-                        selected = languageMode == LanguageMode.VIETNAMESE,
-                        onClick = { onLanguageChange(LanguageMode.VIETNAMESE) },
-                        label = { Text(strings.vietnameseShort, maxLines = 1) },
+            }
+
+            agentConversations.take(6).forEach { conversation ->
+                AgentHistoryDrawerItem(
+                    conversation = conversation,
+                    onClick = { onConversationClick(conversation.id) },
+                    onDeleteClick = { pendingDeleteConversation = conversation },
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
+
+            Text("Agent", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+
+            NavigationDrawerItem(
+                label = { Text("AI Agent") },
+                selected = false,
+                onClick = onAgentManagement,
+                icon = { CustomIcon(Icons.Default.AutoAwesome, contentDescription = null) },
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
+
+            Text(strings.appearance, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp), color = Color.Gray)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onNotificationsEnabledChange(!priceAlertNotificationsEnabled) }
+                    .padding(12.dp)
+            ) {
+                CustomIcon(
+                    if (priceAlertNotificationsEnabled) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                    contentDescription = null,
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(strings.alerts, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = priceAlertNotificationsEnabled,
+                    onCheckedChange = onNotificationsEnabledChange,
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onThemeChange(if (themeMode == ThemeMode.DARK) ThemeMode.LIGHT else ThemeMode.DARK) }
+                    .padding(12.dp)
+            ) {
+                CustomIcon(if (themeMode == ThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Text(strings.darkMode, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = themeMode == ThemeMode.DARK,
+                    onCheckedChange = { onThemeChange(if (it) ThemeMode.DARK else ThemeMode.LIGHT) }
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CustomIcon(Icons.Default.Language, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = strings.language,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    FilterChip(
-                        modifier = Modifier.weight(1f),
-                        selected = languageMode == LanguageMode.ENGLISH,
-                        onClick = { onLanguageChange(LanguageMode.ENGLISH) },
-                        label = { Text(strings.englishShort, maxLines = 1) },
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            modifier = Modifier.weight(1f),
+                            selected = languageMode == LanguageMode.VIETNAMESE,
+                            onClick = { onLanguageChange(LanguageMode.VIETNAMESE) },
+                            label = { Text(strings.vietnameseShort, maxLines = 1) },
+                        )
+                        FilterChip(
+                            modifier = Modifier.weight(1f),
+                            selected = languageMode == LanguageMode.ENGLISH,
+                            onClick = { onLanguageChange(LanguageMode.ENGLISH) },
+                            label = { Text(strings.englishShort, maxLines = 1) },
+                        )
+                    }
                 }
             }
+
+            NavigationDrawerItem(
+                label = { Text(strings.appInformation) },
+                selected = false,
+                onClick = { onAppInformation() },
+                icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
+                shape = RoundedCornerShape(12.dp)
+            )
         }
 
-        NavigationDrawerItem(
-            label = { Text(strings.appInformation) },
-            selected = false,
-            onClick = { onAppInformation() },
-            icon = { CustomIcon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(Modifier.height(12.dp))
 
         Surface(
             modifier = Modifier

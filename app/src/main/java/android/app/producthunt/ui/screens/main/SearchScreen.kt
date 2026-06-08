@@ -676,10 +676,12 @@ private fun AiAssistantBubble(message: AiAssistantMessage) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .size(18.dp),
                     strokeWidth = 2.dp,
                     color = PH_Primary,
                 )
