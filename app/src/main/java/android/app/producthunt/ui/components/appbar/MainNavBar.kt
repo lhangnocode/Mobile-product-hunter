@@ -61,8 +61,8 @@ private fun MainNavBarContent(
 ) {
     val strings = LocalAppStrings.current
     val items = listOf(
-        BottomNavItem(Route.FEED, strings.feed, PHIcons.Trending),
         BottomNavItem(Route.SEARCH, strings.search, PHIcons.Search),
+        BottomNavItem(Route.FEED, strings.feed, PHIcons.Trending),
         BottomNavItem(Route.WISHLIST, strings.wishlist, PHIcons.WishlistOutlined),
         BottomNavItem(Route.ALERTS, strings.alerts, PHIcons.NotificationsOutlined),
     )
@@ -116,7 +116,7 @@ fun MainNavBarPreview() {
     AndroidAppProductHuntTheme {
         MainNavBarContent(
             isVisible = true,
-            isSelected = { it.contains(Route.FEED) },
+            isSelected = { it.contains(Route.SEARCH) },
             onItemClick = {}
         )
     }

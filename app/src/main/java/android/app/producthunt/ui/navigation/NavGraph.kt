@@ -19,8 +19,8 @@ import androidx.navigation.navDeepLink
 const val ANIM_DURATION = 300
 
 val TopLevelRoutes = listOf(
-    Route.FEED,
     Route.SEARCH,
+    Route.FEED,
     Route.WISHLIST,
     Route.ALERTS,
 )

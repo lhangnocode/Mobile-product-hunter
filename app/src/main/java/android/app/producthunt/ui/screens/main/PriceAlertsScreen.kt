@@ -1,4 +1,4 @@
-package android.app.producthunt.ui.screens.main
+ package android.app.producthunt.ui.screens.main
 
 import android.app.producthunt.core.state.UiState
 import android.app.producthunt.data.remote.dto.PriceAlertStatusMapper
@@ -8,7 +8,6 @@ import android.app.producthunt.ui.i18n.LocalAppStrings
 import android.app.producthunt.ui.theme.AndroidAppProductHuntTheme
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.viewmodel.PriceAlertViewModel
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,7 +48,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -172,15 +169,12 @@ fun PriceAlertsScreen(
                 ),
             ) {
                 item {
-                    PageHeader(
+                    PriceAlertCounterPanel(
+                        alertCount = alerts.size,
                         isClearing = deleteAllState is UiState.Loading,
                         hasAlerts = alerts.isNotEmpty(),
                         onClearAllClick = { viewModel.deleteAll() },
                     )
-                }
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    PriceAlertCounterPanel(alertCount = alerts.size)
                     Spacer(Modifier.height(16.dp))
                 }
                 when (alertsState) {
@@ -239,7 +233,12 @@ fun PriceAlertsScreen(
 private const val PRICE_ALERT_REFRESH_INTERVAL_MS = 30_000L
 
 @Composable
-private fun PriceAlertCounterPanel(alertCount: Int) {
+private fun PriceAlertCounterPanel(
+    alertCount: Int,
+    isClearing: Boolean,
+    hasAlerts: Boolean,
+    onClearAllClick: () -> Unit,
+) {
     val strings = LocalAppStrings.current
     Card(
         modifier = Modifier
@@ -257,98 +256,82 @@ private fun PriceAlertCounterPanel(alertCount: Int) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = strings.priceAlerts,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        text = alertCount.toString(),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = alertCount.toString(),
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = strings.priceAlerts,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
+
+            DeleteAllButton(
+                isLoading = isClearing,
+                enabled = hasAlerts && !isClearing,
+                onClick = onClearAllClick,
+            )
         }
     }
 }
 
-private val CounterPanelMinHeight = 82.dp
-
-// ─── Page Header ─────────────────────────────────────────────────────────────
-
 @Composable
-private fun PageHeader(
-    isClearing: Boolean,
-    hasAlerts: Boolean,
-    onClearAllClick: () -> Unit,
+private fun DeleteAllButton(
+    isLoading: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
 ) {
-    val strings = LocalAppStrings.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Button(
-            onClick = onClearAllClick,
-            enabled = hasAlerts && !isClearing,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            if (isClearing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onError,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onError,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
             Spacer(Modifier.width(6.dp))
             Text(
-                text = strings.clearAll.replace("\n", " "),
+                text = "Xóa tất cả",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onError,
                 lineHeight = 16.sp,
             )
         }
     }
 }
+
+private val CounterPanelMinHeight = 82.dp
 
 // ─── Preview ─────────────────────────────────────────────────────────────────
 

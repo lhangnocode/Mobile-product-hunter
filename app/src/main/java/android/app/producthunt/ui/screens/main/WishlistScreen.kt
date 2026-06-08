@@ -12,7 +12,6 @@ import android.app.producthunt.ui.theme.PHIcons
 import android.app.producthunt.ui.theme.PHSpacing
 import android.app.producthunt.ui.theme.PH_Primary
 import android.app.producthunt.ui.viewmodel.WishlistViewModel
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,7 +55,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -116,15 +114,12 @@ fun WishlistScreen(
             val wishlistCount = (wishlistState as? UiState.Success)?.data?.size ?: 0
 
             item {
-                WishlistHeaderActions(
+                WishlistCounterPanel(
+                    count = wishlistCount,
                     isClearing = removeState is UiState.Loading,
                     hasItems = wishlistCount > 0,
                     onClearAll = { wishlistViewModel.removeAll() },
                 )
-            }
-            item {
-                Spacer(Modifier.height(20.dp))
-                WishlistCounterPanel(count = wishlistCount)
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -140,55 +135,11 @@ fun WishlistScreen(
 }
 
 @Composable
-private fun WishlistHeaderActions(
+private fun WishlistCounterPanel(
+    count: Int,
     isClearing: Boolean,
     hasItems: Boolean,
     onClearAll: () -> Unit,
-) {
-    val strings = LocalAppStrings.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PHSpacing.ScreenHorizontal, vertical = PHSpacing.ScreenVertical),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Button(
-            onClick = onClearAll,
-            enabled = hasItems && !isClearing,
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            if (isClearing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onError,
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onError,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = strings.clearAll.replace("\n", " "),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onError,
-                lineHeight = 16.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun WishlistCounterPanel(
-    count: Int,
 ) {
     val strings = LocalAppStrings.current
     Card(
@@ -207,44 +158,77 @@ private fun WishlistCounterPanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = strings.wishlist,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        text = count.toString(),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = count.toString(),
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = strings.wishlist,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
+
+            DeleteAllButton(
+                isLoading = isClearing,
+                enabled = hasItems && !isClearing,
+                onClick = onClearAll,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeleteAllButton(
+    isLoading: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "Xóa tất cả",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 16.sp,
+            )
         }
     }
 }
